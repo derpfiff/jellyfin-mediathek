@@ -281,6 +281,9 @@ public class MediathekController : ControllerBase
             TunerCount = 0,
             AllowHWTranscoding = true,
             EnableStreamLooping = false,
+            // Bild und Ton kommen bei den Sendern als getrennte Streams. Mit „DTS ignorieren“ (Jellyfins Voreinstellung für
+            // M3U-Tuner) verwirft ffmpeg dabei die Tonpakete: das Bild läuft, der Ton fehlt.
+            IgnoreDts = false,
             ImportFavoritesOnly = false,
         };
         await _tuners.SaveTunerHost(tuner, true).ConfigureAwait(false);

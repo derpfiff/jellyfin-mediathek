@@ -164,13 +164,49 @@ public sealed partial class ArdClient
                 }
             }
 
-            // Die Mediathek stellt Sendungen vor Einzeltitel, auch wenn ein Titel genauer passt („… 2026“). Was mehr
-            // Wörter der Anfrage im Namen trägt, rückt nach vorn; sonst bleibt die Reihenfolge der Mediathek.
+            // Ein Treffer je Sendung: Beiträge und Folgen einer Sendung stehen für ihre Sendung und erscheinen erst, wenn man
+            // sie öffnet. Sonst füllt ein einziges Ereignis die Liste mit seinen Ausschnitten. Für sich bleibt nur, was zu
+            // keiner Sendung gehört.
+            var grouped = new List<ArdTeaser>();
+            var seen = new HashSet<string>();
+            var derived = new HashSet<string>();
+            foreach (var t in found)
+            {
+                var entry = t.IsShow || t.ShowId.Length == 0 || t.ShowTitle.Length == 0
+                    ? t
+                    : t with { Id = GroupingId(t.ShowId), IsShow = true, Title = t.ShowTitle, Tagline = string.Empty, ImagePoster = string.Empty, Duration = 0 };
+                if (seen.Add((entry.IsShow ? "s:" : "v:") + entry.Id))
+                {
+                    grouped.Add(entry);
+                    if (!ReferenceEquals(entry, t))
+                    {
+                        derived.Add(entry.Id);
+                    }
+                }
+            }
+
+            // Was mehr Wörter der Anfrage im Namen trägt, rückt nach vorn; sonst bleibt die Reihenfolge der Mediathek.
             var words = query.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Where(w => w.Length > 1).ToArray();
             int Score(ArdTeaser t) => words.Count(w => t.Title.Contains(w, StringComparison.OrdinalIgnoreCase));
-            return (IReadOnlyList<ArdTeaser>)found.DistinctBy(t => t.Id).OrderByDescending(Score).ToList();
+            // Sendungen, die nur über einen einzelnen Beitrag hereinkamen (eine Nachrichtensendung, die das Thema einmal
+            // hatte), fallen weg, sobald es Treffer gibt, die den Begriff im Namen tragen.
+            if (grouped.Any(t => Score(t) > 0))
+            {
+                grouped.RemoveAll(t => derived.Contains(t.Id) && Score(t) == 0);
+            }
+
+            return (IReadOnlyList<ArdTeaser>)grouped.OrderByDescending(Score).Take(30).ToList();
         }).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Beiträge nennen ihre Sendung in der Form „crid://…“; die Seiten der Sendungen heißen nach derselben Angabe,
+    /// Base64-kodiert und ohne Füllzeichen.
+    /// </summary>
+    private static string GroupingId(string showId) =>
+        showId.StartsWith("crid://", StringComparison.Ordinal)
+            ? Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(showId)).TrimEnd('=').Replace('+', '-').Replace('/', '_')
+            : showId;
 
     public async Task<ArdShow?> ShowAsync(string id, int maxEpisodes, CancellationToken ct)
     {

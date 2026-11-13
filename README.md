@@ -8,7 +8,7 @@ Ein Plugin für [Jellyfin](https://jellyfin.org), das die ARD Mediathek und die 
 
 Das Plugin braucht keine Zugangsdaten und speichert keine Videos. Titel, Bilder und Videoadressen kommen von der ARD Mediathek, die Adressen der Live-Sender aus der Filmliste von [MediathekView](https://mediathekview.de) über [MediathekViewWeb](https://mediathekviewweb.de).
 
-Stand: 0.2.1. Gebaut und geprüft gegen Jellyfin 12.4.
+Stand: 0.2.2. Gebaut und geprüft gegen Jellyfin 12.4.
 
 ## Einrichten
 

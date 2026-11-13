@@ -30,7 +30,7 @@ public class MediathekChannel : IChannel, IHasCacheKey
     public const string SourcePrefix = "mediathek-";
 
     /// <summary>Wird hochgesetzt, sobald sich der Aufbau der Titel ändert; Jellyfin legt bekannte Titel dann neu ab.</summary>
-    private static readonly DateTime LayoutChanged = new(2026, 11, 13, 23, 45, 0, DateTimeKind.Utc);
+    private static readonly DateTime LayoutChanged = new(2026, 11, 14, 1, 0, 0, DateTimeKind.Utc);
 
     private readonly ArdClient _ard;
     private readonly IServerApplicationHost _host;
@@ -53,7 +53,7 @@ public class MediathekChannel : IChannel, IHasCacheKey
 
     public string Description => "Sendungen, Serien und Filme aus der ARD Mediathek.";
 
-    public string DataVersion => "14";
+    public string DataVersion => "15";
 
     public string HomePageUrl => "https://www.ardmediathek.de";
 
