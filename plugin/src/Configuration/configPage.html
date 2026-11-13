@@ -7,32 +7,26 @@
     <div class="content-primary">
       <form id="MediathekForm">
         <div class="sectionTitleContainer flex align-items-center"><h2 class="sectionTitle">Mediathek</h2></div>
-        <p>Die Sendungen erscheinen unter „Kanäle“ als „Mediathek“. Geänderte Einstellungen wirken, sobald Jellyfin den Ordner das nächste Mal lädt.</p>
+        <p>Die Mediathek erscheint unter „Kanäle“ als „Mediathek“, mit den Reihen ihrer Startseite und einer Suche. Geänderte Einstellungen wirken, sobald Jellyfin den Ordner das nächste Mal lädt.</p>
+
+        <h3>Wiedergabe</h3>
+        <div class="checkboxContainer checkboxContainer-withDescription">
+          <label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" data-k="ViaServer"><span>Videos und Live-Sender über diesen Server leiten</span></label>
+          <div class="fieldDescription checkboxFieldDescription">Für Ländersperren zählt dann der Standort des Servers, nicht der des Geräts, auf dem geschaut wird. Abgeschaltet holt jedes Gerät die Videos direkt beim Sender; das spart dem Server die Bandbreite.</div>
+        </div>
 
         <h3>Suche</h3>
         <div class="inputContainer">
-          <textarea is="emby-textarea" id="MediathekSearches" rows="6" class="emby-textarea" label="Gemerkte Suchbegriffe (einer je Zeile)"></textarea>
-          <div class="fieldDescription">Jeder Begriff erscheint als Ordner unter „Mediathek → Suche“ und zeigt die neuesten Treffer aus Titel und Sendung.</div>
-        </div>
-
-        <h3>Auswahl</h3>
-        <div class="checkboxContainer checkboxContainer-withDescription">
-          <label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" data-k="HideAccessibilityVersions"><span>Fassungen mit Audiodeskription, Gebärdensprache und Hörfassung ausblenden</span></label>
-        </div>
-        <div class="checkboxContainer checkboxContainer-withDescription">
-          <label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" data-k="HideTrailers"><span>Trailer und Vorschauen ausblenden</span></label>
-        </div>
-        <div class="checkboxContainer checkboxContainer-withDescription">
-          <label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" data-k="IncludeForeign"><span>ORF, SRF und arte (französisch) mit anzeigen</span></label>
-        </div>
-        <div class="inputContainer">
-          <input is="emby-input" type="number" min="0" max="240" data-k="MinimumMinutesInNew" label="Mindestlänge in „Neu“ (Minuten)">
-          <div class="fieldDescription">Kürzere Beiträge erscheinen dort nicht. 0 zeigt alles.</div>
+          <textarea is="emby-textarea" id="MediathekSearches" rows="5" class="emby-textarea" label="Zuletzt gesucht (ein Begriff je Zeile)"></textarea>
+          <div class="fieldDescription">Jeder Begriff erscheint als Ordner unter „Mediathek → Suche“. Die Suche trägt neue Begriffe selbst ein; hier lassen sie sich aufräumen.</div>
         </div>
 
         <h3>Live-TV</h3>
         <div class="checkboxContainer checkboxContainer-withDescription">
           <label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" data-k="IncludeRegionalWindows"><span>Lokalfenster mit anbieten (z. B. WDR Lokalzeit)</span></label>
+        </div>
+        <div class="checkboxContainer checkboxContainer-withDescription">
+          <label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" data-k="IncludeForeign"><span>ORF und arte (französisch) mit anbieten</span></label>
         </div>
         <p>Die Live-Programme laufen über das Live-TV von Jellyfin. Der Knopf trägt Senderliste und Programmübersicht dort ein; danach erscheinen die Sender unter „Live-TV“.</p>
         <button is="emby-button" type="button" id="MediathekLiveSetup" class="raised block emby-button"><span>Live-TV einrichten</span></button>

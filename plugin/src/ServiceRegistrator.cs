@@ -1,3 +1,4 @@
+using Jellyfin.Plugin.Mediathek.Ard;
 using Jellyfin.Plugin.Mediathek.Channel;
 using Jellyfin.Plugin.Mediathek.Live;
 using MediaBrowser.Controller.Channels;
@@ -18,11 +19,14 @@ public class ServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddHttpClient(HttpClientName, c =>
         {
             c.Timeout = TimeSpan.FromSeconds(40);
-            c.DefaultRequestHeaders.UserAgent.ParseAdd("Jellyfin-Mediathek/0.1");
+            c.DefaultRequestHeaders.UserAgent.ParseAdd("Jellyfin-Mediathek/0.2");
         });
         serviceCollection.AddSingleton<MvwClient>();
+        serviceCollection.AddSingleton<ArdClient>();
         serviceCollection.AddSingleton<LiveService>();
+        serviceCollection.AddSingleton<LiveProxy>();
         // Jellyfin sammelt die Kanäle aus den angemeldeten Diensten ein.
         serviceCollection.AddSingleton<IChannel, MediathekChannel>();
+        serviceCollection.Configure<Microsoft.AspNetCore.Mvc.MvcOptions>(o => o.Filters.Add<Web.ViaServerFilter>());
     }
 }

@@ -159,7 +159,8 @@ public sealed class LiveService
     private static string Https(string url) =>
         url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ? "https://" + url[7..] : url;
 
-    public async Task<string> GetPlaylistAsync(CancellationToken ct)
+    /// <param name="proxyRoot">Adresse dieses Servers; gesetzt, wenn die Sender durch ihn geleitet werden.</param>
+    public async Task<string> GetPlaylistAsync(string? proxyRoot, CancellationToken ct)
     {
         var channels = await GetChannelsAsync(ct).ConfigureAwait(false);
         var sb = new StringBuilder("#EXTM3U\n");
@@ -167,16 +168,17 @@ public sealed class LiveService
         {
             sb.Append("#EXTINF:-1 tvg-id=\"").Append(c.Id).Append("\" tvg-chno=\"").Append(c.Number.ToString(CultureInfo.InvariantCulture))
               .Append("\" tvg-name=\"").Append(c.Name.Replace('"', '\'')).Append("\" group-title=\"").Append(c.Group).Append("\",")
-              .Append(c.Name).Append('\n').Append(c.Url).Append('\n');
+              .Append(c.Name).Append('\n').Append(proxyRoot is null ? c.Url : proxyRoot + "/Mediathek/live/m/" + c.Id + ".m3u8").Append('\n');
         }
 
         return sb.ToString();
     }
 
-    public async Task<string> GetGuideAsync(CancellationToken ct)
+    /// <param name="root">Adresse dieses Servers; darüber holt Jellyfin die Bilder der Sendungen.</param>
+    public async Task<string> GetGuideAsync(string root, CancellationToken ct)
     {
         var channels = await GetChannelsAsync(ct).ConfigureAwait(false);
-        var key = string.Join(',', channels.Select(c => c.Id));
+        var key = root + "|" + string.Join(',', channels.Select(c => c.Id));
         if (_guide is { } hit && hit.Key == key && DateTime.UtcNow - hit.At < GuideCacheTime)
         {
             return hit.Xml;
@@ -228,12 +230,11 @@ public sealed class LiveService
                             if (e.TryGetProperty("images", out var images) && images.ValueKind == JsonValueKind.Object
                                 && images.TryGetProperty("aspect16x9", out var wide) && wide.ValueKind == JsonValueKind.Object)
                             {
-                                // Nur Adressen, hinter denen wirklich ein Bild liegt: der Bilderdienst der Mediathek liefert für
-                                // einzelne Bilder eine Beschreibung statt des Bilds, für Bildsammlungen das Bild selbst.
+                                // Der Bilderdienst liefert nicht jede Breite; das Plugin holt das Bild deshalb selbst (LiveProxy.ImageAsync).
                                 var src = Text(wide, "src");
-                                if (!src.Contains("/image-service/images/", StringComparison.Ordinal))
+                                if (src.StartsWith("https://", StringComparison.Ordinal) && src.Contains("{width}", StringComparison.Ordinal))
                                 {
-                                    image = src.Replace("{width}", "640", StringComparison.Ordinal);
+                                    image = root.TrimEnd('/') + "/Mediathek/" + LiveProxy.ImagePath(src, 960);
                                 }
                             }
 

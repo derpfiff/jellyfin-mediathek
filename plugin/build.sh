@@ -1,6 +1,6 @@
 #!/bin/sh
 # Baut das Plugin in einem .NET-SDK-Container. Vorher die Bibliotheken des eigenen Servers nach plugin/lib kopieren
-# (MediaBrowser.Common.dll, MediaBrowser.Controller.dll, MediaBrowser.Model.dll):
+# (MediaBrowser.Common.dll, MediaBrowser.Controller.dll, MediaBrowser.Model.dll, Jellyfin.Database.Implementations.dll):
 #   docker cp <jellyfin-container>:/jellyfin/MediaBrowser.Common.dll plugin/lib/   (ebenso die beiden anderen)
 set -e
 cd "$(dirname "$0")/.."
