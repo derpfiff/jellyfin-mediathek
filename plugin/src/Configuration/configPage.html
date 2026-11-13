@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Mediathek</title></head>
+<body>
+<div id="MediathekConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox,emby-textarea">
+  <div data-role="content">
+    <div class="content-primary">
+      <form id="MediathekForm">
+        <div class="sectionTitleContainer flex align-items-center"><h2 class="sectionTitle">Mediathek</h2></div>
+        <p>Die Sendungen erscheinen unter „Kanäle“ als „Mediathek“. Geänderte Einstellungen wirken, sobald Jellyfin den Ordner das nächste Mal lädt.</p>
+
+        <h3>Suche</h3>
+        <div class="inputContainer">
+          <textarea is="emby-textarea" id="MediathekSearches" rows="6" class="emby-textarea" label="Gemerkte Suchbegriffe (einer je Zeile)"></textarea>
+          <div class="fieldDescription">Jeder Begriff erscheint als Ordner unter „Mediathek → Suche“ und zeigt die neuesten Treffer aus Titel und Sendung.</div>
+        </div>
+
+        <h3>Auswahl</h3>
+        <div class="checkboxContainer checkboxContainer-withDescription">
+          <label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" data-k="HideAccessibilityVersions"><span>Fassungen mit Audiodeskription, Gebärdensprache und Hörfassung ausblenden</span></label>
+        </div>
+        <div class="checkboxContainer checkboxContainer-withDescription">
+          <label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" data-k="HideTrailers"><span>Trailer und Vorschauen ausblenden</span></label>
+        </div>
+        <div class="checkboxContainer checkboxContainer-withDescription">
+          <label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" data-k="IncludeForeign"><span>ORF, SRF und arte (französisch) mit anzeigen</span></label>
+        </div>
+        <div class="inputContainer">
+          <input is="emby-input" type="number" min="0" max="240" data-k="MinimumMinutesInNew" label="Mindestlänge in „Neu“ (Minuten)">
+          <div class="fieldDescription">Kürzere Beiträge erscheinen dort nicht. 0 zeigt alles.</div>
+        </div>
+
+        <h3>Live-TV</h3>
+        <div class="checkboxContainer checkboxContainer-withDescription">
+          <label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" data-k="IncludeRegionalWindows"><span>Lokalfenster mit anbieten (z. B. WDR Lokalzeit)</span></label>
+        </div>
+        <p>Die Live-Programme laufen über das Live-TV von Jellyfin. Der Knopf trägt Senderliste und Programmübersicht dort ein; danach erscheinen die Sender unter „Live-TV“.</p>
+        <button is="emby-button" type="button" id="MediathekLiveSetup" class="raised block emby-button"><span>Live-TV einrichten</span></button>
+        <div class="fieldDescription" id="MediathekLiveResult"></div>
+
+        <br>
+        <button is="emby-button" type="submit" class="raised button-submit block emby-button"><span>Speichern</span></button>
+      </form>
+    </div>
+  </div>
+  <script type="text/javascript">
+    (function () {
+      var pluginId = 'b3d0a2f4-71c6-4e7b-9a0e-5c2f8d14e6a9';
+      var page = document.querySelector('#MediathekConfigPage');
+      function fields() { return page.querySelectorAll('[data-k]'); }
+      page.addEventListener('pageshow', function () {
+        Dashboard.showLoadingMsg();
+        ApiClient.getPluginConfiguration(pluginId).then(function (cfg) {
+          fields().forEach(function (el) {
+            var v = cfg[el.getAttribute('data-k')];
+            if (el.type === 'checkbox') el.checked = !!v; else el.value = v == null ? '' : v;
+          });
+          page.querySelector('#MediathekSearches').value = (cfg.Searches || []).join('\n');
+          Dashboard.hideLoadingMsg();
+        });
+      });
+      page.querySelector('#MediathekForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        Dashboard.showLoadingMsg();
+        ApiClient.getPluginConfiguration(pluginId).then(function (cfg) {
+          fields().forEach(function (el) {
+            var k = el.getAttribute('data-k');
+            cfg[k] = el.type === 'checkbox' ? el.checked : (el.type === 'number' ? (parseInt(el.value, 10) || 0) : el.value.trim());
+          });
+          cfg.Searches = page.querySelector('#MediathekSearches').value.split('\n')
+            .map(function (s) { return s.replace(/\|/g, ' ').trim(); }).filter(function (s) { return s.length > 0; });
+          ApiClient.updatePluginConfiguration(pluginId, cfg).then(Dashboard.processPluginConfigurationUpdateResult);
+        });
+        return false;
+      });
+      page.querySelector('#MediathekLiveSetup').addEventListener('click', function () {
+        var out = page.querySelector('#MediathekLiveResult');
+        out.textContent = 'Wird eingerichtet …';
+        ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('Mediathek/live/setup') }).then(function () {
+          out.textContent = 'Eingerichtet. Jellyfin liest jetzt die Programmübersicht ein; die Sender erscheinen gleich unter „Live-TV“.';
+        }, function () {
+          out.textContent = 'Das hat nicht geklappt. Im Protokoll von Jellyfin steht der Grund.';
+        });
+      });
+    })();
+  </script>
+</div>
+</body>
+</html>

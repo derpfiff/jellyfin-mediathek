@@ -1,0 +1,5 @@
+plugin/lib/
+plugin/out/
+plugin/src/obj/
+plugin/src/bin/
+.DS_Store

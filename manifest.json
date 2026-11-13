@@ -1,0 +1,20 @@
+[
+  {
+    "guid": "b3d0a2f4-71c6-4e7b-9a0e-5c2f8d14e6a9",
+    "name": "Mediathek",
+    "description": "Sendungen der öffentlich-rechtlichen Mediatheken zum Stöbern, Suchen und Abspielen, dazu ihre Live-Programme mit Programmübersicht.",
+    "overview": "Mediatheken und Live-TV der öffentlich-rechtlichen Sender",
+    "owner": "derpfiff",
+    "category": "Channels",
+    "versions": [
+      {
+        "version": "0.1.0.0",
+        "changelog": "Siehe Repository.",
+        "targetAbi": "12.4.0.0",
+        "sourceUrl": "https://raw.githubusercontent.com/derpfiff/jellyfin-mediathek/main/plugin/dist/mediathek_0.1.0.0.zip",
+        "checksum": "cdc4f845220deab5496772d410a42db8",
+        "timestamp": "2026-11-13T18:40:04Z"
+      }
+    ]
+  }
+]
