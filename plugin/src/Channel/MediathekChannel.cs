@@ -30,7 +30,7 @@ public class MediathekChannel : IChannel, IHasCacheKey
     public const string SourcePrefix = "mediathek-";
 
     /// <summary>Wird hochgesetzt, sobald sich der Aufbau der Titel ändert; Jellyfin legt bekannte Titel dann neu ab.</summary>
-    private static readonly DateTime LayoutChanged = new(2026, 11, 14, 1, 0, 0, DateTimeKind.Utc);
+    private static readonly DateTime LayoutChanged = new(2026, 11, 14, 3, 0, 0, DateTimeKind.Utc);
 
     private readonly ArdClient _ard;
     private readonly IServerApplicationHost _host;
@@ -53,7 +53,7 @@ public class MediathekChannel : IChannel, IHasCacheKey
 
     public string Description => "Sendungen, Serien und Filme aus der ARD Mediathek.";
 
-    public string DataVersion => "15";
+    public string DataVersion => "17";
 
     public string HomePageUrl => "https://www.ardmediathek.de";
 
@@ -252,6 +252,9 @@ public class MediathekChannel : IChannel, IHasCacheKey
             Path = s.Url,
             Protocol = MediaProtocol.Http,
             Container = "mp4",
+            // Ohne Angabe rechnet Jellyfin mit 40 Mbit/s und lässt Konten oder Geräte mit einer Bitraten-Grenze die Datei
+            // nicht direkt abspielen („keine gültige Medienquelle“).
+            Bitrate = BitrateFor(s.Width),
             IsRemote = true,
             RunTimeTicks = ticks,
             // Clients holen die Datei unter dieser Adresse selbst. (Als „nicht direkt abspielbar“ markiert würde Jellyfin sie
@@ -264,10 +267,21 @@ public class MediathekChannel : IChannel, IHasCacheKey
             // würde sie für jeden Client umrechnen, statt sie durchzureichen.
             MediaStreams = new List<MediaStream>
             {
-                new() { Type = MediaStreamType.Video, Index = 0, Codec = "h264", Profile = "High", Width = s.Width > 0 ? s.Width : null, Height = s.Height > 0 ? s.Height : null, IsInterlaced = false, PixelFormat = "yuv420p", BitDepth = 8 },
-                new() { Type = MediaStreamType.Audio, Index = 1, Codec = "aac", Profile = "LC", Channels = 2, SampleRate = 48000, Language = "deu", IsDefault = true },
+                new() { Type = MediaStreamType.Video, Index = 0, Codec = "h264", Profile = "High", BitRate = BitrateFor(s.Width) - 128000, Width = s.Width > 0 ? s.Width : null, Height = s.Height > 0 ? s.Height : null, IsInterlaced = false, PixelFormat = "yuv420p", BitDepth = 8 },
+                new() { Type = MediaStreamType.Audio, Index = 1, Codec = "aac", Profile = "LC", BitRate = 128000, Channels = 2, SampleRate = 48000, Language = "deu", IsDefault = true },
             },
         }).ToList();
+
+    /// <summary>Übliche Datenrate der Mediathek-Fassungen je Bildbreite (Bild und Ton zusammen), großzügig gerundet.</summary>
+    private static int BitrateFor(int width) => width switch
+    {
+        >= 1920 => 5_400_000,
+        >= 1280 => 3_500_000,
+        >= 960 => 2_000_000,
+        >= 640 => 1_400_000,
+        > 0 => 900_000,
+        _ => 3_500_000,
+    };
 
     /// <summary>Baut einen abspielbaren Titel. Ohne Videoadresse (Ländersperre, abgelaufen) entsteht keiner.</summary>
     private ChannelItemInfo? Media(ArdTeaser teaser, ArdVideo video, ArdShow? asEpisodeOf)
@@ -305,13 +319,16 @@ public class MediathekChannel : IChannel, IHasCacheKey
         var image = isMovie && teaser.ImagePoster.Length > 0 ? teaser.ImagePoster : (teaser.ImageWide.Length > 0 ? teaser.ImageWide : video.ImageWide);
         return new ChannelItemInfo
         {
-            Id = "v" + Sep + video.Id,
+            Id = (isMovie ? "v" : "c") + Sep + video.Id,
             Name = title,
             SeriesName = isMovie ? null : Nullable(showTitle),
             Overview = Join(isEpisode ? string.Empty : teaser.Tagline, video.Synopsis),
             Type = ChannelItemType.Media,
             MediaType = ChannelMediaType.Video,
-            ContentType = isMovie ? ChannelMediaContentType.Movie : (isEpisode ? ChannelMediaContentType.Episode : ChannelMediaContentType.Clip),
+            // Folgen gelten für Jellyfin als einzelne Videos, nicht als „Episode“: bei einer Episode sucht die Weboberfläche
+            // vor dem Abspielen die übrigen Folgen der Serie, findet bei Sendungen aus einem Kanal keine und spielt dann gar
+            // nichts („keine gültige Medienquelle“). Staffel und Folge stehen trotzdem am Titel.
+            ContentType = isMovie ? ChannelMediaContentType.Movie : ChannelMediaContentType.Clip,
             IndexNumber = isEpisode ? episode : null,
             ParentIndexNumber = isEpisode ? season : null,
             RunTimeTicks = ticks,

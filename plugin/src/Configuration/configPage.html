@@ -32,6 +32,11 @@
         <button is="emby-button" type="button" id="MediathekLiveSetup" class="raised block emby-button"><span>Live-TV einrichten</span></button>
         <div class="fieldDescription" id="MediathekLiveResult"></div>
 
+        <h3>Empfang</h3>
+        <p>Manche Sender lassen sich nur aus ihrem Sendeland abrufen. Die Prüfung fragt jeden Sender einmal von diesem Server aus ab.</p>
+        <button is="emby-button" type="button" id="MediathekStatusCheck" class="raised block emby-button"><span>Sender prüfen</span></button>
+        <div id="MediathekStatus" style="margin-top:1em"></div>
+
         <br>
         <button is="emby-button" type="submit" class="raised button-submit block emby-button"><span>Speichern</span></button>
       </form>
@@ -75,6 +80,29 @@
         }, function () {
           out.textContent = 'Das hat nicht geklappt. Im Protokoll von Jellyfin steht der Grund.';
         });
+      });
+      page.querySelector('#MediathekStatusCheck').addEventListener('click', function () {
+        var box = page.querySelector('#MediathekStatus');
+        box.textContent = 'Sender werden geprüft …';
+        ApiClient.getJSON(ApiClient.getUrl('Mediathek/live/status')).then(function (r) {
+          var list = (r && r.channels) || [], good = list.filter(function (c) { return c.Reachable || c.reachable; });
+          box.textContent = '';
+          var head = document.createElement('p');
+          head.textContent = good.length + ' von ' + list.length + ' Sendern sind von diesem Server aus empfangbar.';
+          box.appendChild(head);
+          var table = document.createElement('table'); table.style.cssText = 'width:100%;border-collapse:collapse';
+          list.slice().sort(function (a, b) { return ((a.Reachable || a.reachable) ? 1 : 0) - ((b.Reachable || b.reachable) ? 1 : 0); }).forEach(function (c) {
+            var ok = c.Reachable || c.reachable, tr = document.createElement('tr');
+            tr.style.borderTop = '1px solid rgba(128,128,128,.25)';
+            [[c.Name || c.name, 'padding:.5em .8em .5em 0;white-space:nowrap;font-weight:600'],
+             [ok ? 'empfangbar' : 'nicht empfangbar', 'padding:.5em .8em;white-space:nowrap;color:' + (ok ? '#4caf50' : '#ef5350')],
+             [ok ? '' : (c.Note || c.note || ''), 'padding:.5em 0;opacity:.85']].forEach(function (cell) {
+              var td = document.createElement('td'); td.textContent = cell[0]; td.style.cssText = cell[1]; tr.appendChild(td);
+            });
+            table.appendChild(tr);
+          });
+          box.appendChild(table);
+        }, function () { box.textContent = 'Die Prüfung hat nicht geklappt.'; });
       });
     })();
   </script>

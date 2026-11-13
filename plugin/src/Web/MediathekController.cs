@@ -257,6 +257,12 @@ public class MediathekController : ControllerBase
     }
 
     /// <summary>Trägt Senderliste und Programm im Live-TV von Jellyfin ein (einmalig; erneutes Aufrufen ändert nichts).</summary>
+    /// <summary>Welche Sender dieser Server empfängt und woran es bei den übrigen liegt.</summary>
+    [HttpGet("live/status")]
+    [Authorize(Policy = "RequiresElevation")]
+    public async Task<ActionResult> LiveStatus(CancellationToken ct) =>
+        new JsonResult(new { channels = await _live.GetStatusAsync(ct).ConfigureAwait(false) });
+
     [HttpPost("live/setup")]
     [Authorize(Policy = "RequiresElevation")]
     public async Task<ActionResult> SetupLive(CancellationToken ct)

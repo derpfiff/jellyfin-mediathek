@@ -8,13 +8,14 @@ Ein Plugin für [Jellyfin](https://jellyfin.org), das die ARD Mediathek und die 
 
 Das Plugin braucht keine Zugangsdaten und speichert keine Videos. Titel, Bilder und Videoadressen kommen von der ARD Mediathek, die Adressen der Live-Sender aus der Filmliste von [MediathekView](https://mediathekview.de) über [MediathekViewWeb](https://mediathekviewweb.de).
 
-Stand: 0.2.2. Gebaut und geprüft gegen Jellyfin 12.4.
+Stand: 0.2.3. Gebaut und geprüft gegen Jellyfin 12.4.
 
 ## Einrichten
 
 1. In Jellyfin unter Dashboard → Plugins → Katalog → Einstellungen ein Repository mit der Adresse `https://raw.githubusercontent.com/derpfiff/jellyfin-mediathek/main/manifest.json` hinzufügen, im Katalog „Mediathek“ installieren und Jellyfin neu starten.
 2. In den Einstellungen des Plugins „Live-TV einrichten“ drücken. Das trägt Senderliste und Programmübersicht im Live-TV ein; ein zweiter Druck legt nichts doppelt an.
-3. Der Kanal „Mediathek“ erscheint, sobald Jellyfin seine Kanäle aktualisiert hat (geplante Aufgabe „Kanäle aktualisieren“, läuft auch von selbst).
+3. „Sender prüfen“ auf derselben Seite zeigt, welche Sender dieser Server empfängt und woran es bei den übrigen liegt (meist eine Ländersperre).
+4. Der Kanal „Mediathek“ erscheint, sobald Jellyfin seine Kanäle aktualisiert hat (geplante Aufgabe „Kanäle aktualisieren“, läuft auch von selbst).
 
 Das Theme [Cinema Glass](https://github.com/derpfiff/cinema-glass) fasst Live-TV und Mediathek ab Version 1.4.0 zu einer eigenen TV-Seite zusammen; nötig ist es nicht.
 
@@ -40,6 +41,7 @@ Für Oberflächen, die die Mediathek selbst darstellen wollen. Die ersten vier v
 | `GET /Mediathek/row?id=…` | Titel einer Reihe, als Jellyfin-Titel |
 | `GET /Mediathek/search?q=…` | Suche in der Mediathek, als Jellyfin-Titel |
 | `POST /Mediathek/live/setup` | Live-TV einrichten (Administratoren) |
+| `GET /Mediathek/live/status` | Empfang je Sender von diesem Server aus (Administratoren) |
 | `GET /Mediathek/live.m3u` | Senderliste für den M3U-Tuner von Jellyfin |
 | `GET /Mediathek/guide.xml` | Programmübersicht (XMLTV) |
 | `GET /Mediathek/live/…`, `/Mediathek/vod/…`, `/Mediathek/img/…` | Live-Sender, Videos und Bilder, durch den Server gereicht |

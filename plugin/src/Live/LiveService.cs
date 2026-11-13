@@ -67,6 +67,7 @@ public sealed partial class LiveService
     private (DateTime At, IReadOnlyList<LiveChannel> Channels, string Key)? _channels;
     private (DateTime At, string Xml, string Key)? _guide;
     private List<string> _zdfTokens = new();
+    private IReadOnlyList<LiveChannel> _left = Array.Empty<LiveChannel>();
 
     public LiveService(MvwClient mvw, IHttpClientFactory http, ILogger<LiveService> logger)
     {
@@ -151,6 +152,7 @@ public sealed partial class LiveService
             // Sender aus dem Ausland sind oft nur dort abrufbar. Was der Server nicht erreicht, bleibt aus der Liste, statt
             // beim Einschalten mit einem Fehler zu enden.
             var reachable = await Task.WhenAll(result.Select(c => c.Group == "Ausland" ? ReachableAsync(c.Url, ct) : Task.FromResult(true))).ConfigureAwait(false);
+            _left = result.Where((_, i) => !reachable[i]).ToList();
             result = result.Where((_, i) => reachable[i]).Select((c, i) => c with { Number = i + 1 }).ToList();
 
             _channels = (DateTime.UtcNow, result, key);
@@ -160,6 +162,51 @@ public sealed partial class LiveService
         {
             _gate.Release();
         }
+    }
+
+    /// <summary>Ein Sender mit dem Ergebnis eines Abrufversuchs von diesem Server aus.</summary>
+    public sealed record LiveStatus(string Name, string Group, bool InList, bool Reachable, int Status, string Note);
+
+    /// <summary>
+    /// Fragt jeden Sender einmal ab und sagt, ob dieser Server ihn empfängt und woran es sonst liegt. Enthält auch die
+    /// Sender, die wegen fehlender Erreichbarkeit nicht in der Liste stehen.
+    /// </summary>
+    public async Task<IReadOnlyList<LiveStatus>> GetStatusAsync(CancellationToken ct)
+    {
+        var listed = await GetChannelsAsync(ct).ConfigureAwait(false);
+        var all = listed.Select(c => (Channel: c, InList: true)).Concat(_left.Select(c => (Channel: c, InList: false))).ToList();
+        using var gate = new SemaphoreSlim(6);
+        var tasks = all.Select(async entry =>
+        {
+            await gate.WaitAsync(ct).ConfigureAwait(false);
+            int status;
+            try
+            {
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                timeout.CancelAfter(TimeSpan.FromSeconds(12));
+                using var response = await _http.CreateClient(ServiceRegistrator.HttpClientName)
+                    .GetAsync(entry.Channel.Url, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
+                status = (int)response.StatusCode;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+            {
+                status = 0;
+            }
+            finally
+            {
+                gate.Release();
+            }
+
+            var ok = status is >= 200 and < 300;
+            var home = entry.Channel.Id.StartsWith("orf", StringComparison.Ordinal) ? "Österreich"
+                : entry.Channel.Id == "arte-fr" ? "Frankreich oder Deutschland" : "Deutschland";
+            var note = ok ? string.Empty
+                : status is 403 or 451 ? "Ländersperre: nur aus " + home + " abrufbar. Dafür muss der Server dort stehen oder über ein VPN dorthin ins Netz gehen."
+                : status == 0 ? "Keine Antwort vom Sender (Zeitüberschreitung oder Verbindung abgelehnt)."
+                : "Der Sender antwortet mit Fehler " + status.ToString(CultureInfo.InvariantCulture) + ".";
+            return new LiveStatus(entry.Channel.Name, entry.Channel.Group, entry.InList, ok, status, note);
+        }).ToList();
+        return await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
     private async Task<bool> ReachableAsync(string url, CancellationToken ct)
