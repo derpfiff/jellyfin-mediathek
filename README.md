@@ -3,12 +3,12 @@
 Ein Plugin für [Jellyfin](https://jellyfin.org), das die ARD Mediathek und die Live-Programme der öffentlich-rechtlichen Sender in den eigenen Server holt:
 
 - **Mediathek als Kanal**: Unter „Kanäle“ erscheint „Mediathek“ mit den Reihen, die die Mediathek gerade auf ihrer Startseite zeigt (Serien, Filme, Dokus, …), und einer Suche. Serien haben Staffeln und Folgen, alles mit Plakaten, Bildern und Beschreibungen.
-- **Live-TV**: Die Live-Programme laufen über das Live-TV von Jellyfin, mit Programmübersicht samt Bildern für die Programme der ARD-Familie, 3sat, arte, KiKA und phoenix.
+- **Live-TV**: Die Live-Programme laufen über das Live-TV von Jellyfin, mit Programmübersicht samt Bildern für die Programme der ARD-Familie, ZDF, ZDFneo, ZDFinfo, 3sat, arte, KiKA und phoenix. Sender aus dem Ausland erscheinen nur, wenn der Server sie erreicht.
 - **Über den eigenen Server**: Auf Wunsch (Voreinstellung) laufen Videos und Live-Sender durch den Server. Für Ländersperren zählt dann sein Standort, und es lässt sich wie gewohnt im Video springen.
 
 Das Plugin braucht keine Zugangsdaten und speichert keine Videos. Titel, Bilder und Videoadressen kommen von der ARD Mediathek, die Adressen der Live-Sender aus der Filmliste von [MediathekView](https://mediathekview.de) über [MediathekViewWeb](https://mediathekviewweb.de).
 
-Stand: 0.2.0. Gebaut und geprüft gegen Jellyfin 12.4.
+Stand: 0.2.1. Gebaut und geprüft gegen Jellyfin 12.4.
 
 ## Einrichten
 
@@ -23,7 +23,8 @@ Das Theme [Cinema Glass](https://github.com/derpfiff/cinema-glass) fasst Live-TV
 - Einzelne Titel sind nur in Deutschland abrufbar. Steht der Server im Ausland, hilft die Einstellung „über diesen Server leiten“ nicht; steht er in Deutschland (oder hinter einem deutschen VPN), laufen sie überall.
 - Titel, die es nur als gestückelten Stream gibt (kein MP4), fehlen noch.
 - Jellyfin merkt sich den Inhalt eines Kanal-Ordners eine Weile; das Plugin lässt die Startseite stündlich neu laden.
-- Für ZDF, ZDFneo und ZDFinfo gibt es noch keine Programmübersicht, die Sender selbst laufen. Die Mediathek des ZDF ist noch nicht dabei.
+- Die Mediathek des ZDF ist noch nicht dabei; seine Sender und ihr Programm schon.
+- Für Deutsche Welle und arte (französisch) gibt es keine Programmübersicht.
 
 ## Bauen
 

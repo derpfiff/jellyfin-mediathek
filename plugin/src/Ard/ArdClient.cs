@@ -164,7 +164,11 @@ public sealed partial class ArdClient
                 }
             }
 
-            return (IReadOnlyList<ArdTeaser>)found.DistinctBy(t => t.Id).ToList();
+            // Die Mediathek stellt Sendungen vor Einzeltitel, auch wenn ein Titel genauer passt („… 2026“). Was mehr
+            // Wörter der Anfrage im Namen trägt, rückt nach vorn; sonst bleibt die Reihenfolge der Mediathek.
+            var words = query.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Where(w => w.Length > 1).ToArray();
+            int Score(ArdTeaser t) => words.Count(w => t.Title.Contains(w, StringComparison.OrdinalIgnoreCase));
+            return (IReadOnlyList<ArdTeaser>)found.DistinctBy(t => t.Id).OrderByDescending(Score).ToList();
         }).ConfigureAwait(false);
     }
 

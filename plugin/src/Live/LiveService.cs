@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Jellyfin.Plugin.Mediathek.Mvw;
 using Microsoft.Extensions.Logging;
 
@@ -14,19 +15,19 @@ public sealed record LiveChannel(string Id, string Name, string Group, string Ur
 /// Stellt die Live-Programme als M3U-Liste und ihr Programm als XMLTV bereit. Die Stream-Adressen stammen aus der Filmliste
 /// von MediathekView (Sendung „Livestream“), das Programm aus der Programmübersicht der ARD.
 /// </summary>
-public sealed class LiveService
+public sealed partial class LiveService
 {
-    // Sender und Titelteil in der Filmliste → Kennung, Anzeigename, Gruppe, Kennung im ARD-Programm.
+    // Sender und Titelteil in der Filmliste → Kennung, Anzeigename, Gruppe, Kennung im ARD-Programm (mit „zdf:“ davor: im Programm des ZDF).
     private static readonly (string Channel, string TitlePart, string Id, string Name, string Group, string? Guide)[] Known =
     {
         ("ARD", "ARD Livestream", "daserste", "Das Erste", "Vollprogramme", "daserste"),
-        ("ZDF", "ZDF Livestream", "zdf", "ZDF", "Vollprogramme", null),
+        ("ZDF", "ZDF Livestream", "zdf", "ZDF", "Vollprogramme", "zdf:ZDF"),
         ("3Sat", "3Sat", "3sat", "3sat", "Vollprogramme", "3sat"),
         ("ARTE.DE", "ARTE.DE", "arte", "arte", "Vollprogramme", "arte"),
         ("KiKA", "KiKA", "kika", "KiKA", "Vollprogramme", "kika"),
         ("PHOENIX", "PHOENIX", "phoenix", "phoenix", "Vollprogramme", "phoenix"),
-        ("ZDF", "ZDF.neo", "zdfneo", "ZDFneo", "Vollprogramme", null),
-        ("ZDF", "ZDF.info", "zdfinfo", "ZDFinfo", "Vollprogramme", null),
+        ("ZDF", "ZDF.neo", "zdfneo", "ZDFneo", "Vollprogramme", "zdf:ZDFneo"),
+        ("ZDF", "ZDF.info", "zdfinfo", "ZDFinfo", "Vollprogramme", "zdf:ZDFinfo"),
         ("ARD", "ARD ONE", "one", "ONE", "Vollprogramme", "one"),
         ("ARD", "Tagesschau", "tagesschau24", "tagesschau24", "Vollprogramme", "tagesschau24"),
         ("ARD", "ARD Alpha", "alpha", "ARD alpha", "Vollprogramme", "alpha"),
@@ -65,6 +66,7 @@ public sealed class LiveService
 
     private (DateTime At, IReadOnlyList<LiveChannel> Channels, string Key)? _channels;
     private (DateTime At, string Xml, string Key)? _guide;
+    private List<string> _zdfTokens = new();
 
     public LiveService(MvwClient mvw, IHttpClientFactory http, ILogger<LiveService> logger)
     {
@@ -146,6 +148,11 @@ public sealed class LiveService
                 result.Add(new LiveChannel(id, name, regional ? "Lokalfenster" : "Weitere", Https(e.UrlVideo), null, number++));
             }
 
+            // Sender aus dem Ausland sind oft nur dort abrufbar. Was der Server nicht erreicht, bleibt aus der Liste, statt
+            // beim Einschalten mit einem Fehler zu enden.
+            var reachable = await Task.WhenAll(result.Select(c => c.Group == "Ausland" ? ReachableAsync(c.Url, ct) : Task.FromResult(true))).ConfigureAwait(false);
+            result = result.Where((_, i) => reachable[i]).Select((c, i) => c with { Number = i + 1 }).ToList();
+
             _channels = (DateTime.UtcNow, result, key);
             return result;
         }
@@ -153,6 +160,105 @@ public sealed class LiveService
         {
             _gate.Release();
         }
+    }
+
+    private async Task<bool> ReachableAsync(string url, CancellationToken ct)
+    {
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(TimeSpan.FromSeconds(12));
+            using var response = await _http.CreateClient(ServiceRegistrator.HttpClientName)
+                .GetAsync(url, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            return false;
+        }
+    }
+
+    [GeneratedRegex("apiToken\\\\?\":\\\\?\"([A-Za-z0-9]{24,64})")]
+    private static partial Regex ZdfToken();
+
+    /// <summary>
+    /// Das Programm des ZDF für einen Tag, in <paramref name="programmes"/> unter „zdf:Sender“ abgelegt. Die Schnittstelle
+    /// verlangt den Schlüssel, den die Seite des ZDF jedem Besucher mitgibt; er wird dort abgelesen.
+    /// </summary>
+    private async Task<bool> LoadZdfAsync(
+        HttpClient client,
+        DateTime day,
+        string root,
+        Dictionary<string, SortedDictionary<DateTimeOffset, (DateTimeOffset End, string Title, string Sub, string Text, string Image)>> programmes,
+        CancellationToken ct)
+    {
+        if (_zdfTokens.Count == 0)
+        {
+            using var page = new HttpRequestMessage(HttpMethod.Get, "https://www.zdf.de/live-tv");
+            page.Headers.UserAgent.ParseAdd("Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0");
+            using var answer = await client.SendAsync(page, ct).ConfigureAwait(false);
+            answer.EnsureSuccessStatusCode();
+            var html = await answer.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            _zdfTokens = ZdfToken().Matches(html).Select(m => m.Groups[1].Value).Distinct().ToList();
+        }
+
+        var offset = TimeZoneInfo.Local.GetUtcOffset(day);
+        string Edge(DateTime t) => Uri.EscapeDataString(new DateTimeOffset(t, offset).ToString("yyyy-MM-dd'T'HH:mm:sszzz", CultureInfo.InvariantCulture));
+        var url = "https://api.zdf.de/cmdm/epg/broadcasts?from=" + Edge(day) + "&to=" + Edge(day.AddDays(1)) + "&limit=400&order=asc&tvServices=ZDF,ZDFneo,ZDFinfo";
+        foreach (var token in _zdfTokens.ToList())
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.TryAddWithoutValidation("Api-Auth", "Bearer " + token);
+            using var response = await client.SendAsync(request, ct).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                continue;
+            }
+
+            await using var stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+            using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct).ConfigureAwait(false);
+            if (!doc.RootElement.TryGetProperty("http://zdf.de/rels/cmdm/broadcasts", out var list) || list.ValueKind != JsonValueKind.Array)
+            {
+                return false;
+            }
+
+            foreach (var e in list.EnumerateArray())
+            {
+                var service = Text(e, "tvService");
+                if (service.Length == 0
+                    || !DateTimeOffset.TryParse(Text(e, "airtimeBegin"), CultureInfo.InvariantCulture, DateTimeStyles.None, out var start)
+                    || !DateTimeOffset.TryParse(Text(e, "airtimeEnd"), CultureInfo.InvariantCulture, DateTimeStyles.None, out var end)
+                    || end <= start)
+                {
+                    continue;
+                }
+
+                var image = string.Empty;
+                if (e.TryGetProperty("http://zdf.de/rels/image", out var picture) && picture.ValueKind == JsonValueKind.Object
+                    && picture.TryGetProperty("layouts", out var layouts) && layouts.ValueKind == JsonValueKind.Object)
+                {
+                    var src = new[] { "1280x720", "1920x1080", "768x432", "2400x1350" }.Select(n => Text(layouts, n)).FirstOrDefault(v => v.StartsWith("https://", StringComparison.Ordinal));
+                    if (src is not null)
+                    {
+                        image = root.TrimEnd('/') + "/Mediathek/" + LiveProxy.ImagePath(src, 960);
+                    }
+                }
+
+                if (!programmes.TryGetValue("zdf:" + service, out var map))
+                {
+                    programmes["zdf:" + service] = map = new();
+                }
+
+                var text = Text(e, "text").Replace("<br/>", "\n", StringComparison.OrdinalIgnoreCase).Replace("<br>", "\n", StringComparison.OrdinalIgnoreCase);
+                map[start] = (end, Text(e, "title"), Text(e, "subtitle"), text, image);
+            }
+
+            return true;
+        }
+
+        // Kein Schlüssel hat gepasst: beim nächsten Mal neu ablesen.
+        _zdfTokens = new List<string>();
+        return false;
     }
 
     // Die Filmliste führt einige Streams mit http; die Server liefern alle auch über https.
@@ -247,6 +353,21 @@ public sealed class LiveService
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _logger.LogWarning(ex, "Mediathek: Programm für Tag {Day} ließ sich nicht laden", day);
+            }
+        }
+
+        if (channels.Any(c => c.GuideId is not null && c.GuideId.StartsWith("zdf:", StringComparison.Ordinal)))
+        {
+            for (var day = -1; day <= 3; day++)
+            {
+                try
+                {
+                    await LoadZdfAsync(client, today.AddDays(day), root, programmes, ct).ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+                {
+                    _logger.LogWarning(ex, "Mediathek: Programm des ZDF für Tag {Day} ließ sich nicht laden", day);
+                }
             }
         }
 
