@@ -48,8 +48,8 @@ public sealed partial class LiveService
         ("SWR", "SWR BW", "swr-bw", "SWR Baden-Württemberg", "Dritte", "swr"),
         ("SWR", "SWR RP", "swr-rp", "SWR Rheinland-Pfalz", "Dritte", "swr"),
         ("WDR", "WDR Livestream", "wdr", "WDR Fernsehen", "Dritte", "wdr"),
-        ("DW", "DW Livestream", "dw", "Deutsche Welle", "Weitere", null),
-        ("ARTE.FR", "ARTE.FR", "arte-fr", "arte (französisch)", "Ausland", null),
+        ("DW", "DW Livestream", "dw", "Deutsche Welle", "Weitere", "dw:english"),
+        ("ARTE.FR", "ARTE.FR", "arte-fr", "arte (französisch)", "Ausland", "arte:fr"),
         ("ORF", "ORF-1", "orf1", "ORF 1", "Ausland", null),
         ("ORF", "ORF-2", "orf2", "ORF 2", "Ausland", null),
         ("ORF", "ORF-3", "orf3", "ORF III", "Ausland", null),
@@ -354,6 +354,127 @@ public sealed partial class LiveService
         return false;
     }
 
+    private const string ArteFrGuide = "arte:fr";
+    private const string DwGuide = "dw:english";
+    private const string Browser = "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0";
+
+    private static async Task<JsonDocument> GetJsonAsync(HttpClient client, string url, CancellationToken ct)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.UserAgent.ParseAdd(Browser);
+        using var response = await client.SendAsync(request, ct).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+        await using var stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+        return await JsonDocument.ParseAsync(stream, cancellationToken: ct).ConfigureAwait(false);
+    }
+
+    /// <summary>Das Programm des französischen arte für einen Tag, aus dessen eigener Programmübersicht.</summary>
+    private static async Task LoadArteFrAsync(
+        HttpClient client,
+        DateTime day,
+        string root,
+        Dictionary<string, SortedDictionary<DateTimeOffset, (DateTimeOffset End, string Title, string Sub, string Text, string Image)>> programmes,
+        CancellationToken ct)
+    {
+        using var doc = await GetJsonAsync(client, "https://api.arte.tv/api/emac/v3/fr/web/pages/TV_GUIDE/?day=" + day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), ct).ConfigureAwait(false);
+        if (!doc.RootElement.TryGetProperty("zones", out var zones) || zones.ValueKind != JsonValueKind.Array)
+        {
+            return;
+        }
+
+        if (!programmes.TryGetValue(ArteFrGuide, out var map))
+        {
+            programmes[ArteFrGuide] = map = new();
+        }
+
+        foreach (var zone in zones.EnumerateArray())
+        {
+            if (!zone.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
+            {
+                continue;
+            }
+
+            foreach (var e in data.EnumerateArray())
+            {
+                if (!e.TryGetProperty("availability", out var availability)
+                    || !DateTimeOffset.TryParse(Text(availability, "upcomingDate"), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var start)
+                    || !e.TryGetProperty("duration", out var length) || !length.TryGetInt32(out var seconds) || seconds <= 0)
+                {
+                    continue;
+                }
+
+                var image = string.Empty;
+                if (e.TryGetProperty("images", out var images) && images.ValueKind == JsonValueKind.Object
+                    && images.TryGetProperty("landscape", out var landscape) && landscape.ValueKind == JsonValueKind.Object
+                    && landscape.TryGetProperty("resolutions", out var sizes) && sizes.ValueKind == JsonValueKind.Array)
+                {
+                    var urls = sizes.EnumerateArray().Select(r => Text(r, "url")).Where(u => u.StartsWith("https://", StringComparison.Ordinal)).ToList();
+                    var src = urls.FirstOrDefault(u => u.EndsWith("/940x530", StringComparison.Ordinal)) ?? urls.LastOrDefault();
+                    if (src is not null)
+                    {
+                        image = root.TrimEnd('/') + "/Mediathek/" + LiveProxy.ImagePath(src, 960);
+                    }
+                }
+
+                start = start.ToLocalTime();
+                var text = Text(e, "shortDescription");
+                map[start] = (start.AddSeconds(seconds), Text(e, "title"), Text(e, "subtitle"), text.Length > 0 ? text : Text(e, "teaserText"), image);
+            }
+        }
+    }
+
+    /// <summary>Das Programm der Deutschen Welle (englischer Kanal) für die nächsten Stunden, von deren Live-Seite.</summary>
+    private static async Task LoadDwAsync(
+        HttpClient client,
+        string root,
+        Dictionary<string, SortedDictionary<DateTimeOffset, (DateTimeOffset End, string Title, string Sub, string Text, string Image)>> programmes,
+        CancellationToken ct)
+    {
+        using var doc = await GetJsonAsync(client, "https://www.dw.com/graph-api/de/livestream/english", ct).ConfigureAwait(false);
+        if (!doc.RootElement.TryGetProperty("data", out var data) || !data.TryGetProperty("livestreamChannels", out var list) || list.ValueKind != JsonValueKind.Array)
+        {
+            return;
+        }
+
+        var map = programmes[DwGuide] = new();
+        foreach (var channel in list.EnumerateArray())
+        {
+            if (!channel.TryGetProperty("nextTimeSlots", out var slots) || slots.ValueKind != JsonValueKind.Array)
+            {
+                continue;
+            }
+
+            foreach (var e in slots.EnumerateArray())
+            {
+                if (!DateTimeOffset.TryParse(Text(e, "startDate"), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var start)
+                    || !DateTimeOffset.TryParse(Text(e, "endDate"), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var end)
+                    || end <= start)
+                {
+                    continue;
+                }
+
+                e.TryGetProperty("program", out var program);
+                e.TryGetProperty("programElement", out var element);
+                var title = Text(program, "name");
+                var sub = Text(element, "name");
+                var image = Text(program, "posterImageUrl");
+                if (image.StartsWith("https://", StringComparison.Ordinal))
+                {
+                    // Die Bilder gibt es unter derselben Adresse auch als JPEG, das jede Oberfläche anzeigt.
+                    image = root.TrimEnd('/') + "/Mediathek/" + LiveProxy.ImagePath(image.EndsWith(".webp", StringComparison.Ordinal) ? image[..^5] + ".jpg" : image, 960);
+                }
+                else
+                {
+                    image = string.Empty;
+                }
+
+                map[start.ToLocalTime()] = (end.ToLocalTime(), title.Length > 0 ? title : sub, title.Length > 0 ? sub : string.Empty, Text(element, "teaser"), image);
+            }
+
+            break;
+        }
+    }
+
     // Die Filmliste führt einige Streams mit http; die Server liefern alle auch über https.
     private static string Https(string url) =>
         url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ? "https://" + url[7..] : url;
@@ -461,6 +582,48 @@ public sealed partial class LiveService
                 {
                     _logger.LogWarning(ex, "Mediathek: Programm des ZDF für Tag {Day} ließ sich nicht laden", day);
                 }
+            }
+        }
+
+        // Zwei Sender führen weder ARD noch ZDF im Programm; ihr Programm kommt von den Sendern selbst.
+        if (channels.Any(c => c.GuideId == ArteFrGuide))
+        {
+            for (var day = -1; day <= 3; day++)
+            {
+                try
+                {
+                    await LoadArteFrAsync(client, today.AddDays(day), root, programmes, ct).ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+                {
+                    _logger.LogWarning(ex, "Mediathek: Programm von arte (französisch) für Tag {Day} ließ sich nicht laden", day);
+                }
+            }
+
+            // Die Liste nennt Beginn und Länge; eine Sendung reicht bis zur nächsten, wenn diese bald darauf folgt.
+            if (programmes.TryGetValue(ArteFrGuide, out var arte))
+            {
+                var starts = arte.Keys.ToList();
+                for (var i = 0; i + 1 < starts.Count; i++)
+                {
+                    var p = arte[starts[i]];
+                    if (starts[i + 1] - p.End is var gap && gap > TimeSpan.FromMinutes(-30) && gap < TimeSpan.FromMinutes(30))
+                    {
+                        arte[starts[i]] = (starts[i + 1], p.Title, p.Sub, p.Text, p.Image);
+                    }
+                }
+            }
+        }
+
+        if (channels.Any(c => c.GuideId == DwGuide))
+        {
+            try
+            {
+                await LoadDwAsync(client, root, programmes, ct).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+            {
+                _logger.LogWarning(ex, "Mediathek: Programm der Deutschen Welle ließ sich nicht laden");
             }
         }
 
