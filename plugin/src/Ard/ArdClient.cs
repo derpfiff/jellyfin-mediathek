@@ -305,7 +305,14 @@ public sealed partial class ArdClient
 
                         if (main.ValueKind == JsonValueKind.Object && main.TryGetProperty("media", out var media) && media.ValueKind == JsonValueKind.Array)
                         {
-                            foreach (var m in media.EnumerateArray())
+                            // Dieselbe Liste führt neben der Sendefassung oft die Fassung mit Audiodeskription (Hörfilm), mal
+                            // davor, mal dahinter. Gibt es Dateien mit dem normalen Ton, zählen nur diese.
+                            static bool StandardAudio(JsonElement m) =>
+                                !m.TryGetProperty("audios", out var audios) || audios.ValueKind != JsonValueKind.Array || audios.GetArrayLength() == 0
+                                || audios.EnumerateArray().Any(a => Text(a, "kind") is "standard" or "");
+                            var files = media.EnumerateArray().Where(m => Text(m, "mimeType") == "video/mp4").ToList();
+                            var wanted = files.Any(StandardAudio) ? files.Where(StandardAudio).ToList() : files;
+                            foreach (var m in wanted)
                             {
                                 var url = Text(m, "url");
                                 if (Text(m, "mimeType") != "video/mp4" || !Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
