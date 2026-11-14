@@ -235,7 +235,21 @@ public class MediathekController : ControllerBase
             return NotFound();
         }
 
-        return new JsonResult(new { path = "Mediathek/" + LiveProxy.VodPath(best.Url), container = "mp4", bitrate = MediathekChannel.BitrateFor(best.Width) });
+        return new JsonResult(new { path = "Mediathek/" + LiveProxy.VodPath(best.Url), container = "mp4", bitrate = MediathekChannel.BitrateFor(best.Width), key = LiveProxy.TransferKey(best.Url) });
+    }
+
+    /// <summary>
+    /// Wie weit ein Download ist, den der Server gerade durchreicht (Schlüssel aus <c>download</c>). Apps mit eigener
+    /// Download-Verwaltung melden ihren Stand nicht an die Weboberfläche; der Server kennt ihn.
+    /// </summary>
+    [HttpGet("download/progress")]
+    [Authorize]
+    public ActionResult DownloadProgress([FromQuery] string key)
+    {
+        var state = LiveProxy.Transfer(key ?? string.Empty);
+        return new JsonResult(state is { } s
+            ? new { known = true, percent = Math.Round(s.Percent, 1), done = s.Done, idle = Math.Round(s.Idle) }
+            : new { known = false, percent = 0.0, done = false, idle = 0.0 });
     }
 
     /// <summary>

@@ -390,8 +390,60 @@ public sealed partial class LiveProxy
         }
 
         await using var stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
-        await stream.CopyToAsync(context.Response.Body, 128 * 1024, ct).ConfigureAwait(false);
+        // Ein Abruf der ganzen Datei von vorn ist ein Download (Player holen Teilstücke): sein Stand wird mitgezählt,
+        // damit Oberflächen ihn anzeigen können (siehe Transfer).
+        var total = response.Content.Headers.ContentLength ?? 0;
+        // „Ab dem ersten Byte bis zum Ende“ ist dasselbe wie ohne Bereichsangabe; so holt Jellyfin die Datei, wenn eine
+        // App sie über seinen eigenen Weg lädt.
+        var wanted = context.Request.Headers["Range"].ToString().Replace(" ", string.Empty, StringComparison.Ordinal);
+        var whole = wanted.Length == 0 ? response.StatusCode == System.Net.HttpStatusCode.OK : wanted == "bytes=0-";
+        if (!whole || total < 4 * 1024 * 1024)
+        {
+            await stream.CopyToAsync(context.Response.Body, 128 * 1024, ct).ConfigureAwait(false);
+            return;
+        }
+
+        var key = TransferKey(target.AbsoluteUri);
+        var mine = Guid.NewGuid();
+        Transfers[key] = (mine, 0, total, DateTime.UtcNow, false);
+        var buffer = System.Buffers.ArrayPool<byte>.Shared.Rent(128 * 1024);
+        long sent = 0;
+        try
+        {
+            int read;
+            while ((read = await stream.ReadAsync(buffer, ct).ConfigureAwait(false)) > 0)
+            {
+                await context.Response.Body.WriteAsync(buffer.AsMemory(0, read), ct).ConfigureAwait(false);
+                sent += read;
+                if (Transfers.TryGetValue(key, out var now) && now.Owner == mine)
+                {
+                    Transfers[key] = (mine, sent, total, DateTime.UtcNow, false);
+                }
+            }
+        }
+        finally
+        {
+            System.Buffers.ArrayPool<byte>.Shared.Return(buffer);
+            if (Transfers.TryGetValue(key, out var last) && last.Owner == mine)
+            {
+                Transfers[key] = (mine, sent, total, DateTime.UtcNow, sent >= total);
+            }
+
+            foreach (var old in Transfers.Where(t => DateTime.UtcNow - t.Value.At > TimeSpan.FromHours(6)).Select(t => t.Key).ToList())
+            {
+                Transfers.TryRemove(old, out _);
+            }
+        }
     }
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (Guid Owner, long Sent, long Total, DateTime At, bool Done)> Transfers = new();
+
+    /// <summary>Unter diesem Schlüssel führt das Plugin den Stand eines Downloads der Datei mit dieser Adresse.</summary>
+    public static string TransferKey(string url) => Sign("dl|" + url);
+
+    /// <summary>Stand des jüngsten Downloads zu einem Schlüssel: Anteil in Prozent, fertig, Sekunden seit dem letzten Stück.</summary>
+    public static (double Percent, bool Done, double Idle)? Transfer(string key) =>
+        Transfers.TryGetValue(key, out var t) ? (t.Total > 0 ? t.Sent * 100.0 / t.Total : 0, t.Done, (DateTime.UtcNow - t.At).TotalSeconds) : null;
 
     /// <summary>So lange nach dem Einschalten gilt ein Abruf der Segmentliste als der erste dieses Zuschauers.</summary>
     private const int HoldMilliseconds = 3000;
