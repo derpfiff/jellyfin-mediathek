@@ -599,20 +599,6 @@ public sealed partial class LiveService
                     _logger.LogWarning(ex, "Mediathek: Programm von arte (französisch) für Tag {Day} ließ sich nicht laden", day);
                 }
             }
-
-            // Die Liste nennt Beginn und Länge; eine Sendung reicht bis zur nächsten, wenn diese bald darauf folgt.
-            if (programmes.TryGetValue(ArteFrGuide, out var arte))
-            {
-                var starts = arte.Keys.ToList();
-                for (var i = 0; i + 1 < starts.Count; i++)
-                {
-                    var p = arte[starts[i]];
-                    if (starts[i + 1] - p.End is var gap && gap > TimeSpan.FromMinutes(-30) && gap < TimeSpan.FromMinutes(30))
-                    {
-                        arte[starts[i]] = (starts[i + 1], p.Title, p.Sub, p.Text, p.Image);
-                    }
-                }
-            }
         }
 
         if (channels.Any(c => c.GuideId == DwGuide))
@@ -624,6 +610,23 @@ public sealed partial class LiveService
             catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
             {
                 _logger.LogWarning(ex, "Mediathek: Programm der Deutschen Welle ließ sich nicht laden");
+            }
+        }
+
+        // Die Quellen lassen zwischen kurzen Sendungen Lücken (Trailer, Füller) oder nennen nur Beginn und Länge. In einer
+        // Lücke liefe für Jellyfin „nichts“, die Senderkarte bliebe leer: eine Sendung reicht deshalb bis zur nächsten, wenn
+        // diese bald darauf folgt oder sich mit ihr überschneidet.
+        foreach (var map in programmes.Values)
+        {
+            var starts = map.Keys.ToList();
+            for (var i = 0; i + 1 < starts.Count; i++)
+            {
+                var p = map[starts[i]];
+                var gap = starts[i + 1] - p.End;
+                if (gap != TimeSpan.Zero && gap > TimeSpan.FromMinutes(-45) && gap < TimeSpan.FromMinutes(45))
+                {
+                    map[starts[i]] = (starts[i + 1], p.Title, p.Sub, p.Text, p.Image);
+                }
             }
         }
 
