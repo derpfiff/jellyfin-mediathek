@@ -3,12 +3,12 @@
 Ein Plugin für [Jellyfin](https://jellyfin.org), das die ARD Mediathek und die Live-Programme der öffentlich-rechtlichen Sender in den eigenen Server holt:
 
 - **Mediathek als Kanal**: Unter „Kanäle“ erscheint „Mediathek“ mit den Reihen, die die Mediathek gerade auf ihrer Startseite zeigt (Serien, Filme, Dokus, …), und einer Suche. Serien haben Staffeln und Folgen, alles mit Plakaten, Bildern und Beschreibungen.
-- **Live-TV**: Die Live-Programme laufen über das Live-TV von Jellyfin, mit Programmübersicht samt Bildern für die Programme der ARD-Familie, ZDF, ZDFneo, ZDFinfo, 3sat, arte (auch französisch), KiKA, phoenix und die Deutsche Welle. Sender, die der Server sicher nicht empfangen kann (Ländersperre), bleiben aus der Liste; von den Dritten mit mehreren Regionalfassungen erscheint eine. Das erste Einschalten bereitet das Plugin im Hintergrund vor, damit ein Sender nach etwa einer Sekunde läuft.
+- **Live-TV**: Die Live-Programme laufen über das Live-TV von Jellyfin, mit Programmübersicht samt Bildern für die Programme der ARD-Familie, ZDF, ZDFneo, ZDFinfo, 3sat, arte (auch französisch), KiKA, phoenix und die Deutsche Welle. Sender, die der Server sicher nicht empfangen kann (Ländersperre), bleiben aus der Liste; von den Dritten mit mehreren Regionalfassungen erscheint eine. Das erste Einschalten bereitet das Plugin im Hintergrund vor, und jeder Sender beginnt mit rund zwanzig Sekunden Vorrat: Das Bild steht nach wenigen Sekunden, und kurze Aussetzer der Leitung führen nicht gleich zu Hängern (dafür liegt das Bild etwa zwanzig Sekunden hinter dem Live-Signal).
 - **Über den eigenen Server**: Auf Wunsch (Voreinstellung) laufen Videos und Live-Sender durch den Server. Für Ländersperren zählt dann sein Standort, und es lässt sich wie gewohnt im Video springen.
 
 Das Plugin braucht keine Zugangsdaten und speichert keine Videos. Titel, Bilder und Videoadressen kommen von der ARD Mediathek, die Adressen der Live-Sender aus der Filmliste von [MediathekView](https://mediathekview.de) über [MediathekViewWeb](https://mediathekviewweb.de).
 
-Stand: 0.2.8. Gebaut und geprüft gegen Jellyfin 12.4.
+Stand: 0.2.9. Gebaut und geprüft gegen Jellyfin 12.4.
 
 ## Einrichten
 
@@ -40,6 +40,7 @@ Für Oberflächen, die die Mediathek selbst darstellen wollen. Die ersten vier v
 | `GET /Mediathek/home` | Reihen der Startseite (Kennung, Titel, Anzahl) |
 | `GET /Mediathek/row?id=…` | Titel einer Reihe, als Jellyfin-Titel |
 | `GET /Mediathek/search?q=…` | Suche in der Mediathek, als Jellyfin-Titel |
+| `GET /Mediathek/children?id=…` | Staffeln oder Folgen einer Sendung (Kennung des Ordners in Jellyfin), vollständig und in der Reihenfolge der Mediathek |
 | `GET /Mediathek/resume` | Angefangene Titel der Mediathek, zuletzt gesehene vorn |
 | `GET /Mediathek/download?id=…` | Adresse, unter der der Server die beste Fassung eines Titels als Datei durchreicht |
 | `POST /Mediathek/live/setup` | Live-TV einrichten (Administratoren) |
@@ -48,7 +49,7 @@ Für Oberflächen, die die Mediathek selbst darstellen wollen. Die ersten vier v
 | `GET /Mediathek/live.m3u` | Senderliste für den M3U-Tuner von Jellyfin |
 | `GET /Mediathek/guide.xml` | Programmübersicht (XMLTV) |
 | `GET /Mediathek/live/…`, `/Mediathek/vod/…`, `/Mediathek/img/…` | Live-Sender, Videos und Bilder, durch den Server gereicht |
-| `GET /Mediathek/play/…` | Folge einer Sendung abspielen; die Adresse beim Sender wird erst bei diesem Abruf herausgesucht |
+| `GET /Mediathek/play/…` | Titel abspielen; die Adresse beim Sender wird erst bei diesem Abruf herausgesucht |
 
 Durchgereicht wird nur, was der Server selbst ausgegeben hat: jede dieser Adressen trägt eine Prüfsumme mit einem Schlüssel, den das Plugin beim ersten Start würfelt. Als offener Proxy lässt es sich nicht benutzen.
 

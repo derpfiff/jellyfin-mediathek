@@ -24,7 +24,7 @@ public sealed class ViaServerFilter : IAsyncResultFilter
             string? root = null;
             foreach (var source in info.MediaSources)
             {
-                if (source.Id is null || !source.Id.StartsWith(Channel.MediathekChannel.SourcePrefix, StringComparison.Ordinal) || source.Path is null)
+                if (source.Path is null)
                 {
                     continue;
                 }
@@ -39,7 +39,9 @@ public sealed class ViaServerFilter : IAsyncResultFilter
                     continue;
                 }
 
-                if (!viaServer || !source.Path.StartsWith("https://", StringComparison.Ordinal)
+                // Titel aus der Zeit vor 0.2.8 tragen noch die Adresse beim Sender.
+                if (!viaServer || source.Id is null || !source.Id.StartsWith(Channel.MediathekChannel.SourcePrefix, StringComparison.Ordinal)
+                    || !source.Path.StartsWith("https://", StringComparison.Ordinal)
                     || source.Path.Contains("/Mediathek/vod/", StringComparison.Ordinal))
                 {
                     continue;

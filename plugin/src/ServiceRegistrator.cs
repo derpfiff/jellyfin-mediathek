@@ -29,7 +29,8 @@ public class ServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<LiveWarmup>();
         serviceCollection.AddHostedService(provider => provider.GetRequiredService<LiveWarmup>());
         // Jellyfin sammelt die Kanäle aus den angemeldeten Diensten ein.
-        serviceCollection.AddSingleton<IChannel, MediathekChannel>();
+        serviceCollection.AddSingleton<MediathekChannel>();
+        serviceCollection.AddSingleton<IChannel>(provider => provider.GetRequiredService<MediathekChannel>());
         serviceCollection.Configure<Microsoft.AspNetCore.Mvc.MvcOptions>(o => o.Filters.Add<Web.ViaServerFilter>());
     }
 }

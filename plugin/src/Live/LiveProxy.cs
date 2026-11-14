@@ -200,6 +200,9 @@ public sealed partial class LiveProxy
         }
 
         var sb = new StringBuilder("#EXTM3U\n#EXT-X-VERSION:4\n#EXT-X-INDEPENDENT-SEGMENTS\n");
+        // Wann diese Liste ausgegeben wurde, steht an den Adressen der Segmentlisten: daran erkennt ProxyAsync den ersten
+        // Abruf eines neuen Zuschauers (siehe HoldBack).
+        var opened = "?t=" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture);
         var info = best.Value.Info;
         var group = AudioGroup().Match(info);
         string? audioLine = null;
@@ -210,7 +213,7 @@ public sealed partial class LiveProxy
             var chosen = audio.FirstOrDefault(l => l.Contains("DEFAULT=YES", StringComparison.Ordinal)) ?? audio.FirstOrDefault();
             if (chosen is not null)
             {
-                audioLine = UriAttribute().Replace(chosen, m => "URI=\"../p/" + Token(new Uri(source, m.Groups[1].Value)) + "\"");
+                audioLine = UriAttribute().Replace(chosen, m => "URI=\"../p/" + Token(new Uri(source, m.Groups[1].Value)) + opened + "\"");
             }
         }
 
@@ -224,7 +227,7 @@ public sealed partial class LiveProxy
         }
 
         // Erst das Bild, dann der Ton: in dieser Reihenfolge legt ffmpeg die Spuren an, und Jellyfin erwartet das Bild vorn.
-        sb.Append(info).Append('\n').Append("../p/").Append(Token(new Uri(source, best.Value.Uri))).Append('\n');
+        sb.Append(info).Append('\n').Append("../p/").Append(Token(new Uri(source, best.Value.Uri))).Append(opened).Append('\n');
         if (audioLine is not null)
         {
             sb.Append(audioLine).Append('\n');
@@ -271,6 +274,12 @@ public sealed partial class LiveProxy
         if (isPlaylist)
         {
             var text = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            if (long.TryParse(context.Request.Query["t"], NumberStyles.Integer, CultureInfo.InvariantCulture, out var opened)
+                && DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - opened is >= 0 and < HoldMilliseconds)
+            {
+                text = HoldBack(text);
+            }
+
             context.Response.ContentType = "application/vnd.apple.mpegurl";
             // Diese Liste liegt selbst unter …/p/{Prüfsumme}/…, ihre Einträge also einen Ordner höher.
             await context.Response.WriteAsync(Rewrite(text, response.RequestMessage?.RequestUri ?? target, "../"), ct).ConfigureAwait(false);
@@ -382,6 +391,59 @@ public sealed partial class LiveProxy
 
         await using var stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
         await stream.CopyToAsync(context.Response.Body, 128 * 1024, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>So lange nach dem Einschalten gilt ein Abruf der Segmentliste als der erste dieses Zuschauers.</summary>
+    private const int HoldMilliseconds = 3000;
+
+    /// <summary>So viele Sekunden Programm bekommt ein Zuschauer beim Einschalten als Vorrat.</summary>
+    private const double HeadStartSeconds = 20;
+
+    [GeneratedRegex(@"^#EXTINF:([\d.]+)")]
+    private static partial Regex SegmentLength();
+
+    /// <summary>
+    /// Vorrat beim Einschalten. ffmpeg beginnt einen Live-Sender drei Segmente vor dem Ende der Liste und bekommt danach
+    /// nur noch, was der Sender in Echtzeit nachliefert: Das Abspielgerät hängt dann ohne Puffer an der Live-Kante, wartet
+    /// beim Einschalten sekundenlang auf die ersten Stücke und bleibt bei jeder kleinen Verzögerung stehen. Beim ersten
+    /// Abruf fehlen der Liste deshalb die jüngsten rund zwanzig Sekunden. ffmpeg beginnt entsprechend früher, findet beim
+    /// nächsten Abruf alles Fehlende auf einmal vor und reicht es sofort weiter: Das Bild steht schneller, und das Gerät
+    /// hat einen Vorrat. Der Preis sind zwanzig Sekunden mehr Abstand zum Live-Signal.
+    /// </summary>
+    private static string HoldBack(string playlist)
+    {
+        var lines = playlist.Replace("\r", string.Empty, StringComparison.Ordinal).Split('\n');
+        if (lines.Any(l => l.StartsWith("#EXT-X-ENDLIST", StringComparison.Ordinal) || l.StartsWith("#EXT-X-STREAM-INF", StringComparison.Ordinal)))
+        {
+            return playlist;
+        }
+
+        // Je Segment die Zeile, mit der es beginnt (#EXTINF), und seine Länge.
+        var starts = Enumerable.Range(0, lines.Length).Where(i => lines[i].StartsWith("#EXTINF", StringComparison.Ordinal)).ToList();
+        var held = 0;
+        var seconds = 0.0;
+        // Mindestens sechs Segmente bleiben stehen, damit ffmpeg wie gewohnt drei vor dem Ende beginnen kann.
+        while (held < starts.Count - 6 && seconds < HeadStartSeconds)
+        {
+            held++;
+            var length = SegmentLength().Match(lines[starts[^held]]);
+            seconds += length.Success && double.TryParse(length.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var d) ? d : 2;
+        }
+
+        if (held == 0)
+        {
+            return playlist;
+        }
+
+        // Alles ab dem ersten zurückgehaltenen Segment fällt weg; Zeilen direkt davor, die schon zu ihm gehören
+        // (Zeitstempel, Sprungmarke), ebenfalls.
+        var cut = starts[^held];
+        while (cut > 0 && (lines[cut - 1].StartsWith("#EXT-X-PROGRAM-DATE-TIME", StringComparison.Ordinal) || lines[cut - 1] == "#EXT-X-DISCONTINUITY"))
+        {
+            cut--;
+        }
+
+        return string.Join('\n', lines[..cut]) + "\n";
     }
 
     /// <summary>So viele Segmente bleiben am Ende einer Live-Liste stehen.</summary>

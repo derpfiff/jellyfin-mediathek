@@ -2,6 +2,9 @@ using System.Globalization;
 using Jellyfin.Plugin.Mediathek.Ard;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Channels;
+using MediaBrowser.Controller.Entities;
+using MediaBrowser.Controller.Entities.Movies;
+using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Channels;
 using MediaBrowser.Model.Dto;
@@ -30,16 +33,21 @@ public class MediathekChannel : IChannel, IHasCacheKey
     public const string SourcePrefix = "mediathek-";
 
     /// <summary>Wird hochgesetzt, sobald sich der Aufbau der Titel ändert; Jellyfin legt bekannte Titel dann neu ab.</summary>
-    private static readonly DateTime LayoutChanged = new(2026, 11, 14, 12, 0, 0, DateTimeKind.Utc);
+    private static readonly DateTime LayoutChanged = new(2026, 11, 14, 18, 0, 0, DateTimeKind.Utc);
 
     private readonly ArdClient _ard;
     private readonly IServerApplicationHost _host;
+    private readonly ILibraryManager _library;
     private readonly ILogger<MediathekChannel> _logger;
 
-    public MediathekChannel(ArdClient ard, IServerApplicationHost host, ILogger<MediathekChannel> logger)
+    /// <summary>Sendungen, deren Folgen gerade ihre Beschreibungen bekommen.</summary>
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _describing = new();
+
+    public MediathekChannel(ArdClient ard, IServerApplicationHost host, ILibraryManager library, ILogger<MediathekChannel> logger)
     {
         _ard = ard;
         _host = host;
+        _library = library;
         _logger = logger;
     }
 
@@ -53,7 +61,7 @@ public class MediathekChannel : IChannel, IHasCacheKey
 
     public string Description => "Sendungen, Serien und Filme aus der ARD Mediathek.";
 
-    public string DataVersion => "19";
+    public string DataVersion => "20";
 
     public string HomePageUrl => "https://www.ardmediathek.de";
 
@@ -69,7 +77,13 @@ public class MediathekChannel : IChannel, IHasCacheKey
     /// der Mediathek frisch bleibt, und sofort, wenn ein Suchbegriff dazukommt.
     /// </summary>
     public string? GetCacheKey(string? userId) =>
-        DateTime.UtcNow.ToString("yyyyMMddHH", CultureInfo.InvariantCulture) + Sep + string.Join(',', Config.Searches);
+        DateTime.UtcNow.ToString("yyyyMMddHH", CultureInfo.InvariantCulture) + Sep + string.Join(',', Config.Searches) + Fresh;
+
+    /// <summary>
+    /// Solange gesetzt, gilt für Jellyfin kein Ordner als schon gelesen: es fragt den Kanal neu und legt fehlende Titel
+    /// wieder an (siehe <see cref="Web.MediathekController"/>).
+    /// </summary>
+    internal static volatile string? Fresh;
 
     public InternalChannelFeatures GetChannelFeatures() => new()
     {
@@ -101,7 +115,8 @@ public class MediathekChannel : IChannel, IHasCacheKey
         }
     }
 
-    private async Task<List<ChannelItemInfo>> ItemsFor(string? folder, CancellationToken ct)
+    /// <summary>Der Inhalt eines Ordners, wie ihn der Kanal an Jellyfin meldet; <c>null</c> ist die oberste Ebene.</summary>
+    public async Task<List<ChannelItemInfo>> ItemsFor(string? folder, CancellationToken ct)
     {
         if (string.IsNullOrEmpty(folder))
         {
@@ -213,11 +228,92 @@ public class MediathekChannel : IChannel, IHasCacheKey
 
     /// <summary>
     /// Die Folgen einer Sendung, allein aus ihrer Übersichtsseite: Titel, Bild, Länge und Datum stehen dort. Die Seite
-    /// jedes einzelnen Videos (mit den Videoadressen) wird erst beim Abspielen gelesen, siehe <see cref="LazySources"/>;
+    /// jedes einzelnen Videos (mit den Videoadressen) wird erst beim Abspielen gelesen, siehe <see cref="Sources"/>;
     /// sonst kostete eine Sendung mit 240 Ausgaben 240 Abrufe, bevor die Liste erscheint.
     /// </summary>
-    private List<ChannelItemInfo> Episodes(ArdShow show, IReadOnlyList<ArdTeaser> episodes) =>
-        episodes.Select(t => Media(t, null, asEpisodeOf: show)).Where(i => i is not null).Select(i => i!).ToList();
+    private List<ChannelItemInfo> Episodes(ArdShow show, IReadOnlyList<ArdTeaser> episodes)
+    {
+        Describe(show.Id, episodes);
+        return episodes.Select(t => Media(t, null, asEpisodeOf: show)).Where(i => i is not null).Select(i => i!).ToList();
+    }
+
+    /// <summary>
+    /// Die Beschreibung einer Folge steht nur auf der Seite ihres Videos. Sie wird nachgereicht, während die Liste längst
+    /// angezeigt ist: im Hintergrund, mit zwei Abrufen zugleich, und nur für Folgen, die noch keine haben. Jellyfin
+    /// übernimmt eine Beschreibung nur beim ersten Anlegen eines Titels, deshalb trägt das Plugin sie selbst ein.
+    /// </summary>
+    private void Describe(string showId, IReadOnlyList<ArdTeaser> episodes)
+    {
+        if (episodes.Count == 0 || !_describing.TryAdd(showId, 0))
+        {
+            return;
+        }
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                // Jellyfin legt die Titel an, sobald die Liste zurückgegeben ist; vorher gäbe es nichts zu ergänzen.
+                await Task.Delay(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+                using var gate = new SemaphoreSlim(2, 2);
+                await Task.WhenAll(episodes.Select(async t =>
+                {
+                    await gate.WaitAsync().ConfigureAwait(false);
+                    try
+                    {
+                        var item = _library.GetItemById(ItemGuid("c" + Sep + t.Id, false));
+                        if (item is null || !string.IsNullOrWhiteSpace(item.Overview))
+                        {
+                            return;
+                        }
+
+                        var video = await _ard.VideoAsync(t.Id, CancellationToken.None).ConfigureAwait(false);
+                        if (video is { Synopsis.Length: > 0 })
+                        {
+                            item.Overview = video.Synopsis;
+                            await item.UpdateToRepositoryAsync(ItemUpdateType.MetadataEdit, CancellationToken.None).ConfigureAwait(false);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Mediathek: Beschreibung zu {Title} ließ sich nicht nachtragen", t.Title);
+                    }
+                    finally
+                    {
+                        gate.Release();
+                    }
+                })).ConfigureAwait(false);
+            }
+            finally
+            {
+                _describing.TryRemove(showId, out _);
+            }
+        });
+    }
+
+    /// <summary>
+    /// Die Kennung, unter der Jellyfin einen Titel dieses Kanals führt; Jellyfin bildet sie aus der Kennung des Plugins,
+    /// dem Namen des Kanals und der Art des Titels (Film oder Video).
+    /// </summary>
+    private Guid ItemGuid(string externalId, bool isMovie) =>
+        _library.GetNewItemId(externalId + Name + "16", isMovie ? typeof(Movie) : typeof(Video));
+
+    /// <summary>Die Kennung, unter der Jellyfin einen Eintrag dieses Kanals führt (Ordner, Sendung, Staffel oder Titel).</summary>
+    public Guid ItemGuid(ChannelItemInfo info)
+    {
+        if (info.Type != ChannelItemType.Folder)
+        {
+            return ItemGuid(info.Id, info.ContentType == ChannelMediaContentType.Movie);
+        }
+
+        var type = info.FolderType switch
+        {
+            ChannelFolderType.Series => typeof(MediaBrowser.Controller.Entities.TV.Series),
+            ChannelFolderType.Season => typeof(MediaBrowser.Controller.Entities.TV.Season),
+            _ => typeof(MediaBrowser.Controller.Entities.Folder),
+        };
+        return _library.GetNewItemId(info.Id + Name + "16", type);
+    }
 
     private static ChannelItemInfo Folder(string id, string name, string? overview) => new()
     {
@@ -230,23 +326,31 @@ public class MediathekChannel : IChannel, IHasCacheKey
     };
 
     /// <summary>
-    /// Die Fassungen eines Videos als Medienquellen; sie zeigen auf den Sender. Soll die Wiedergabe über den Server laufen,
-    /// stellt <see cref="Web.ViaServerFilter"/> die Adressen um, sobald ein Client danach fragt.
-    /// </summary>
-    private static List<MediaSourceInfo> Sources(ArdVideo video, long? ticks) =>
-        video.Streams.Select(s => Source(video.Id, s.Label, s.Width, s.Height, s.Url, ticks)).ToList();
-
-    /// <summary>
-    /// Medienquellen für ein Video, dessen Seite noch nicht gelesen ist: die vier Fassungen, in denen die Mediathek ihre
-    /// Videos durchweg anbietet. Ihre Adressen zeigen auf das Plugin (<c>Mediathek/play/…</c>), das die Adresse beim Sender
-    /// erst heraussucht, wenn jemand abspielt; fehlt eine Fassung, nimmt es die nächstkleinere.
+    /// Die Fassungen eines Videos als Medienquellen. Ihre Adressen zeigen auf das Plugin (<c>Mediathek/play/…</c>), das die
+    /// Adresse beim Sender erst heraussucht, wenn jemand abspielt; fehlt eine Fassung, nimmt es die nächstkleinere. Ist die
+    /// Seite des Videos noch nicht gelesen (<paramref name="video"/> fehlt), stehen hier die vier Fassungen, in denen die
+    /// Mediathek ihre Videos durchweg anbietet.
     /// (Jellyfins Rückruf für Medienquellen taugt dafür nicht: ohne gespeicherte Quellen stellt Jellyfin eine eigene,
     /// leere Quelle voran, und Clients spielen dann diese.)
     /// </summary>
-    private List<MediaSourceInfo> LazySources(string videoId, long? ticks)
+    private List<MediaSourceInfo> Sources(string videoId, ArdVideo? video, Guid itemId, long? ticks)
     {
         var root = _host.GetApiUrlForLocalAccess().TrimEnd('/') + "/Mediathek/";
-        return ArdClient.Ladder.Select(v => Source(videoId, v.Label, v.Width, v.Height, root + Live.LiveProxy.PlayPath(videoId, v.Width), ticks)).ToList();
+        var versions = video is null
+            ? ArdClient.Ladder.ToList()
+            : video.Streams.OrderByDescending(s => s.Width).Select(s => (s.Label, s.Width, s.Height)).ToList();
+        var sources = versions.Select(v => Source(videoId, v.Label, v.Width, v.Height, root + Live.LiveProxy.PlayPath(videoId, v.Width), ticks)).ToList();
+        // Die beste Fassung trägt die Kennung des Titels selbst, wie es Jellyfin bei Titeln mit einer Datei hält. Darauf
+        // verlassen sich das Umrechnen (HLS liest die Kennung der Quelle als GUID) und Jellyfins eigene Detailseite (sie
+        // ruft die gewählte Fassung als Titel ab). Die übrigen Fassungen behalten bewusst eine Kennung, die keine GUID
+        // ist: solche hält Jellyfin für andere Fassungen aus der Bibliothek und verwirft sie, wenn es dort keinen Titel
+        // dazu gibt.
+        if (sources.Count > 0)
+        {
+            sources[0].Id = itemId.ToString("N", CultureInfo.InvariantCulture);
+        }
+
+        return sources;
     }
 
     private static MediaSourceInfo Source(string videoId, string label, int width, int height, string url, long? ticks)
@@ -254,8 +358,6 @@ public class MediathekChannel : IChannel, IHasCacheKey
         var s = new ArdStream(label, width, height, url);
         return new MediaSourceInfo
         {
-            // Bewusst keine Kennung in GUID-Form: solche hält Jellyfin für andere Fassungen aus der Bibliothek und
-            // verwirft sie, wenn es dort keinen Titel dazu gibt.
             Id = SourcePrefix + s.Width.ToString(CultureInfo.InvariantCulture) + "-" + Convert.ToHexString(System.Security.Cryptography.MD5.HashData(System.Text.Encoding.UTF8.GetBytes(videoId))).ToLowerInvariant()[..16],
             Name = s.Label.Length > 0 ? s.Label : s.Width.ToString(CultureInfo.InvariantCulture) + " px",
             Path = s.Url,
@@ -329,17 +431,18 @@ public class MediathekChannel : IChannel, IHasCacheKey
             title = showTitle + ": " + title;
         }
 
-        var sources = video is null ? LazySources(videoId, ticks) : Sources(video, ticks);
+        var externalId = (isMovie ? "m" : "c") + Sep + videoId;
+        var sources = Sources(videoId, video, ItemGuid(externalId, isMovie), ticks);
 
         var image = teaser.ImageWide.Length > 0 ? teaser.ImageWide : (video is { ImageWide.Length: > 0 } ? video.ImageWide : teaser.ImagePoster);
         var rating = video is { Rating.Length: > 0 } ? video.Rating : teaser.Rating;
         var publisher = video is { Publisher.Length: > 0 } ? video.Publisher : (asEpisodeOf?.Publisher ?? string.Empty);
         return new ChannelItemInfo
         {
-            Id = (isMovie ? "m" : "c") + Sep + videoId,
+            Id = externalId,
             Name = title,
             SeriesName = isMovie ? null : Nullable(showTitle),
-            Overview = Join(isEpisode ? string.Empty : teaser.Tagline, video?.Synopsis ?? string.Empty),
+            Overview = Join(isEpisode ? string.Empty : teaser.Tagline, (video ?? _ard.KnownVideo(videoId))?.Synopsis ?? string.Empty),
             Type = ChannelItemType.Media,
             MediaType = ChannelMediaType.Video,
             // Folgen gelten für Jellyfin als einzelne Videos, nicht als „Episode“: bei einer Episode sucht die Weboberfläche

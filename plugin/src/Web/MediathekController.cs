@@ -38,9 +38,11 @@ public class MediathekController : ControllerBase
     private readonly IConfigurationManager _config;
     private readonly ILibraryManager _library;
     private readonly LiveWarmup _warmup;
+    private readonly MediathekChannel _mediathek;
 
-    public MediathekController(LiveService live, LiveProxy proxy, ArdClient ard, IDtoService dto, IChannelManager channels, IUserManager users, IServerApplicationHost host, ITunerHostManager tuners, IListingsManager listings, IConfigurationManager config, ILibraryManager library, LiveWarmup warmup)
+    public MediathekController(LiveService live, LiveProxy proxy, ArdClient ard, IDtoService dto, IChannelManager channels, IUserManager users, IServerApplicationHost host, ITunerHostManager tuners, IListingsManager listings, IConfigurationManager config, ILibraryManager library, LiveWarmup warmup, MediathekChannel mediathek)
     {
+        _mediathek = mediathek;
         _live = live;
         _proxy = proxy;
         _channels = channels;
@@ -133,7 +135,7 @@ public class MediathekController : ControllerBase
         }
 
         await Prefetch(row.Teasers, ct).ConfigureAwait(false);
-        return await Listing(new[] { MediathekChannel.RowId(row.Id) }, row.Teasers.Select(t => t.Id).ToList(), ct).ConfigureAwait(false);
+        return await Listing(new[] { MediathekChannel.RowId(row.Id) }, null, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -154,7 +156,8 @@ public class MediathekController : ControllerBase
         // Jellyfin legt Kanal-Titel nur an, wenn ihr Ordner aufgelistet wird. Der Begriff wird deshalb gemerkt (neueste vorn)
         // und sein Ordner anschließend auf dem üblichen Weg geöffnet.
         var config = plugin.Configuration;
-        var remembered = config.Searches.Where(s => !string.Equals(s, q, StringComparison.OrdinalIgnoreCase)).Prepend(q).Take(RememberedSearches).ToArray();
+        // Oberflächen suchen schon beim Tippen: Anfänge des Begriffs („tag“, „tages“ vor „tagesschau“) fallen wieder heraus.
+        var remembered = config.Searches.Where(s => !q.StartsWith(s, StringComparison.OrdinalIgnoreCase)).Prepend(q).Take(RememberedSearches).ToArray();
         if (!remembered.SequenceEqual(config.Searches))
         {
             config.Searches = remembered;
@@ -163,9 +166,17 @@ public class MediathekController : ControllerBase
 
         var found = await _ard.SearchAsync(q, 12, 36, ct).ConfigureAwait(false);
         await Prefetch(found, ct).ConfigureAwait(false);
-        var order = found.Select(t => t.Id).ToList();
-        return await Listing(new[] { MediathekChannel.SearchFolder, MediathekChannel.SearchId(q) }, order, ct).ConfigureAwait(false);
+        return await Listing(new[] { MediathekChannel.SearchFolder, MediathekChannel.SearchId(q) }, null, ct).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Der Inhalt einer Sendung oder Staffel (Kennung des Ordners in Jellyfin): ihre Staffeln oder Folgen, vollständig
+    /// auch dann, wenn einzelne Folgen gerade zusätzlich in einer Reihe der Startseite oder einer Suche stehen.
+    /// </summary>
+    [HttpGet("children")]
+    [Authorize]
+    public Task<ActionResult<QueryResult<BaseItemDto>>> Children([FromQuery] Guid id, CancellationToken ct) =>
+        Listing(Array.Empty<string>(), id, ct);
 
     /// <summary>
     /// Die angefangenen Titel der Mediathek, zuletzt gesehene vorn. Jellyfin merkt sich die Stelle wie bei jedem anderen
@@ -315,10 +326,16 @@ public class MediathekController : ControllerBase
     }
 
     /// <summary>
-    /// Öffnet im Kanal den Ordner am Ende des Pfads (Kennungen des Plugins, von der obersten Ebene abwärts) und liefert seinen
-    /// Inhalt. <paramref name="order"/> nennt die Kennungen der Mediathek in der gewünschten Reihenfolge.
+    /// Öffnet im Kanal einen Ordner und liefert seinen Inhalt in der Reihenfolge der Mediathek. Der Ordner ist das Ende
+    /// von <paramref name="path"/> (Kennungen des Plugins, von der obersten Ebene abwärts) oder, falls angegeben,
+    /// <paramref name="folderId"/> (Kennung in Jellyfin).
     /// </summary>
-    private async Task<ActionResult<QueryResult<BaseItemDto>>> Listing(IReadOnlyList<string> path, IReadOnlyList<string> order, CancellationToken ct)
+    /// <remarks>
+    /// Jellyfin führt jeden Titel eines Kanals in genau einem Ordner, dem zuletzt gelesenen. Steht eine Sendung zugleich
+    /// in einer Reihe der Startseite und in einer Suche, fehlte sie deshalb in einer von beiden. Die Titel werden hier
+    /// darum nicht über ihren Ordner gesucht, sondern einzeln über ihre Kennung, wie sie der Kanal für diesen Ordner meldet.
+    /// </remarks>
+    private async Task<ActionResult<QueryResult<BaseItemDto>>> Listing(IReadOnlyList<string> path, Guid? folderId, CancellationToken ct)
     {
         if (!Guid.TryParse(User.FindFirst("Jellyfin-UserId")?.Value, out var userId) || _users.GetUserById(userId) is not { } user)
         {
@@ -344,6 +361,18 @@ public class MediathekController : ControllerBase
         try
         {
             var parent = Guid.Empty;
+            string? external = null;
+            if (folderId is { } wanted)
+            {
+                if (_library.GetItemById(wanted) is not { } folder || !folder.ChannelId.Equals(channel.Id) || string.IsNullOrEmpty(folder.ExternalId))
+                {
+                    return NotFound();
+                }
+
+                parent = folder.Id;
+                external = folder.ExternalId;
+            }
+
             foreach (var step in path)
             {
                 var folder = (await Children(parent).ConfigureAwait(false)).FirstOrDefault(i => string.Equals(i.ExternalId, step, StringComparison.OrdinalIgnoreCase));
@@ -353,27 +382,47 @@ public class MediathekController : ControllerBase
                 }
 
                 parent = folder.Id;
+                external = step;
             }
 
+            // Lässt Jellyfin die Titel anlegen, falls es den Ordner noch nicht (oder länger nicht) gelesen hat.
             content = await Children(parent).ConfigureAwait(false);
+            try
+            {
+                var wantedIds = (await _mediathek.ItemsFor(external, ct).ConfigureAwait(false)).Select(_mediathek.ItemGuid).Distinct().ToList();
+                List<BaseItem> Known() => wantedIds.Select(id => _library.GetItemById(id)).Where(i => i is not null).Select(i => i!).ToList();
+                var known = Known();
+                if (known.Count < wantedIds.Count)
+                {
+                    // Ein Titel fehlt ganz: ein anderer Ordner hatte ihn übernommen und inzwischen wieder abgegeben.
+                    // Jellyfin liest diesen Ordner dann noch einmal frisch und legt ihn neu an.
+                    MediathekChannel.Fresh = Guid.NewGuid().ToString("N");
+                    try
+                    {
+                        await Children(parent).ConfigureAwait(false);
+                    }
+                    finally
+                    {
+                        MediathekChannel.Fresh = null;
+                    }
+
+                    known = Known();
+                }
+
+                content = known;
+            }
+            catch (Exception ex) when (ex is HttpRequestException or System.Text.Json.JsonException or TaskCanceledException && !ct.IsCancellationRequested)
+            {
+                // Die Mediathek antwortet gerade nicht: dann bleibt es bei dem, was Jellyfin zu diesem Ordner kennt.
+            }
         }
         finally
         {
             ListingGate.Release();
         }
 
-        // Jellyfin sortiert nach Namen; maßgeblich ist die Reihenfolge der Mediathek.
-        var rank = order.Select((id, index) => (id, index)).GroupBy(p => p.id).ToDictionary(g => g.Key, g => g.First().index, StringComparer.OrdinalIgnoreCase);
-        int Rank(BaseItem item)
-        {
-            var external = item.ExternalId ?? string.Empty;
-            var cut = external.IndexOf('|', StringComparison.Ordinal);
-            return rank.TryGetValue(cut >= 0 ? external[(cut + 1)..] : external, out var index) ? index : int.MaxValue;
-        }
-
-        var items = content.OrderBy(Rank).ToList();
         var options = new DtoOptions { Fields = new[] { ItemFields.Overview, ItemFields.PrimaryImageAspectRatio } };
-        var dtos = _dto.GetBaseItemDtos(items, options, user);
+        var dtos = _dto.GetBaseItemDtos(content.ToList(), options, user);
         return new QueryResult<BaseItemDto>(dtos);
     }
 

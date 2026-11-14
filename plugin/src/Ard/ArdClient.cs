@@ -347,6 +347,10 @@ public sealed partial class ArdClient
         }).ConfigureAwait(false);
     }
 
+    /// <summary>Die Seite eines Videos, falls sie vor Kurzem schon gelesen wurde; ohne Abruf.</summary>
+    public ArdVideo? KnownVideo(string id) =>
+        _cache.TryGetValue("video|" + id, out var hit) && DateTime.UtcNow - hit.At < CacheTime ? hit.Value as ArdVideo : null;
+
     // MARK: Hilfen
 
     private static List<ArdTeaser> Teasers(JsonElement container)
