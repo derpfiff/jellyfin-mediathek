@@ -17,6 +17,12 @@ public class PluginConfiguration : BasePluginConfiguration
     /// </summary>
     public bool ViaServer { get; set; } = true;
 
+    /// <summary>
+    /// Eigene Seite der Mediathek in Jellyfins Weboberfläche (Suche, laufendes Programm, Reihen, Download). Mit dem Theme
+    /// „Cinema Glass“ bleibt sie von selbst untätig.
+    /// </summary>
+    public bool WebUi { get; set; } = true;
+
     /// <summary>Schlüssel für die Prüfsummen weitergereichter Adressen; entsteht beim ersten Start von selbst.</summary>
     public string ProxyKey { get; set; } = string.Empty;
 

@@ -1,0 +1,46 @@
+/* Mediathek – Seite für Jellyfins eigene Weboberfläche (siehe web.js). Farben und Schrift kommen vom gewählten
+   Jellyfin-Design; hier stehen nur Anordnung und Maße. */
+.mth-on > :not(.mth-hub) { display: none !important; }
+.mth-hub { padding: 5.5em 3.3% 4em; max-width: 1800px; margin: 0 auto; }
+.mth-search input {
+  width: 100%; max-width: 640px; box-sizing: border-box; padding: .8em 1.1em; font: inherit; font-size: 1.05em; color: inherit;
+  background: rgba(128, 128, 128, .18); border: 1px solid rgba(128, 128, 128, .35); border-radius: .5em; outline: none;
+}
+.mth-search input:focus { border-color: currentColor; }
+.mth-hub.is-searching .mth-body, .mth-hub.is-detail > :not(.mth-detail) { display: none; }
+.mth-results { margin-top: 1.4em; }
+.mth-title { margin: 1.6em 0 .6em; font-size: 1.35em; font-weight: 500; }
+.mth-row { display: flex; gap: 1em; overflow-x: auto; padding-bottom: .6em; scroll-snap-type: x proximity; }
+.mth-row > .mth-card { flex: 0 0 auto; width: clamp(200px, 19vw, 300px); scroll-snap-align: start; }
+.mth-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(160px, 18vw, 280px), 1fr)); gap: 1.4em 1em; }
+.mth-card { cursor: pointer; min-width: 0; outline: none; }
+.mth-pic { position: relative; display: block; aspect-ratio: 16 / 9; border-radius: .45em; overflow: hidden; background: rgba(128, 128, 128, .2); }
+.mth-pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mth-card:hover .mth-pic, .mth-card:focus-visible .mth-pic { box-shadow: 0 0 0 2px currentColor; }
+.mth-blank { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: .8em; text-align: center; font-weight: 600; opacity: .8; }
+.mth-len, .mth-chan { position: absolute; padding: .15em .5em; border-radius: .3em; font-size: .8em; background: rgba(0, 0, 0, .7); color: #fff; }
+.mth-len { right: .5em; bottom: .5em; }
+.mth-chan { left: .5em; top: .5em; }
+.mth-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(255, 255, 255, .3); }
+.mth-bar i { display: block; height: 100%; background: #00a4dc; }
+.mth-dl {
+  position: absolute; left: .5em; bottom: .5em; width: 2em; height: 2em; border: 0; border-radius: 50%; cursor: pointer;
+  font-size: 1em; line-height: 1; background: rgba(0, 0, 0, .7); color: #fff; opacity: 0; transition: opacity .15s;
+}
+.mth-card:hover .mth-dl, .mth-card:focus-within .mth-dl { opacity: 1; }
+@media (hover: none) { .mth-dl { opacity: 1; } }
+.mth-name { margin-top: .5em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mth-sub { font-size: .88em; opacity: .65; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mth-h1 { margin: .6em 0 .3em; font-size: 2em; font-weight: 500; }
+.mth-text { max-width: 60em; opacity: .8; white-space: pre-line; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 5; overflow: hidden; }
+.mth-tabs { display: flex; flex-wrap: wrap; gap: .5em; margin: 1.2em 0; }
+.mth-tabs:empty { display: none; }
+.mth-btn, .mth-tab { padding: .5em 1.1em; border: 1px solid rgba(128, 128, 128, .4); border-radius: 2em; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.mth-tab.is-on { background: currentColor; }
+.mth-tab.is-on { color: #fff; background: #00a4dc; border-color: #00a4dc; }
+.mth-hint { opacity: .7; }
+@media (max-width: 700px) {
+  .mth-hub { padding: 4.5em 4% 3em; }
+  .mth-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mth-row > .mth-card { width: 62vw; }
+}

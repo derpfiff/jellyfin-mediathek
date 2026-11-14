@@ -90,6 +90,28 @@ public class MediathekController : ControllerBase
         }
     }
 
+    /// <summary>Skript und Stylesheet der Mediathek-Seite für Jellyfins Weboberfläche (siehe <see cref="WebUiFilter"/>).</summary>
+    [HttpGet("web.js")]
+    [AllowAnonymous]
+    public ActionResult WebScript() => WebFile("web.js", "application/javascript");
+
+    [HttpGet("web.css")]
+    [AllowAnonymous]
+    public ActionResult WebStyle() => WebFile("web.css", "text/css");
+
+    private ActionResult WebFile(string name, string type)
+    {
+        using var stream = typeof(MediathekController).Assembly.GetManifestResourceStream("Mediathek." + name);
+        if (stream is null)
+        {
+            return NotFound();
+        }
+
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+        Response.Headers["Cache-Control"] = "public, max-age=3600";
+        return Content(reader.ReadToEnd(), type, Encoding.UTF8);
+    }
+
     /// <summary>Ein Bild der Mediathek in passender Größe (siehe <see cref="LiveProxy.ImageAsync"/>).</summary>
     [HttpGet("img/{signature}/{width:int}/{data}")]
     [AllowAnonymous]
