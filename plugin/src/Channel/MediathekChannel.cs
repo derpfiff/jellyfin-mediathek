@@ -53,7 +53,7 @@ public class MediathekChannel : IChannel, IHasCacheKey
 
     public string Description => "Sendungen, Serien und Filme aus der ARD Mediathek.";
 
-    public string DataVersion => "17";
+    public string DataVersion => "18";
 
     public string HomePageUrl => "https://www.ardmediathek.de";
 
@@ -131,7 +131,9 @@ public class MediathekChannel : IChannel, IHasCacheKey
                 return await Build(found, ct).ConfigureAwait(false);
             }
 
-            case "show" when parts.Length >= 2:
+            // Die Kennungen „sh“, „se“ und „m“ lösten „show“, „season“ und „v“ ab, als die Bilder auf Querformat wechselten:
+            // Jellyfin behält das Bild eines bekannten Titels, unter neuer Kennung holt es das neue.
+            case "sh" or "show" when parts.Length >= 2:
             {
                 var show = await _ard.ShowAsync(parts[1], 240, ct).ConfigureAwait(false);
                 if (show is null)
@@ -144,13 +146,13 @@ public class MediathekChannel : IChannel, IHasCacheKey
                 {
                     return seasons.Select(s => new ChannelItemInfo
                     {
-                        Id = "season" + Sep + parts[1] + Sep + s.ToString(CultureInfo.InvariantCulture),
+                        Id = "se" + Sep + parts[1] + Sep + s.ToString(CultureInfo.InvariantCulture),
                         Name = "Staffel " + s.ToString(CultureInfo.InvariantCulture),
                         SeriesName = show.Title,
                         IndexNumber = s,
                         Type = ChannelItemType.Folder,
                         FolderType = ChannelFolderType.Season,
-                        ImageUrl = Picture(show.ImagePoster, 640),
+                        ImageUrl = Picture(show.ImageWide.Length > 0 ? show.ImageWide : show.ImagePoster, 960),
                         DateModified = LayoutChanged,
                     }).ToList();
                 }
@@ -158,7 +160,7 @@ public class MediathekChannel : IChannel, IHasCacheKey
                 return await Episodes(show, show.Episodes, ct).ConfigureAwait(false);
             }
 
-            case "season" when parts.Length >= 3 && int.TryParse(parts[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out var season):
+            case "se" or "season" when parts.Length >= 3 && int.TryParse(parts[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out var season):
             {
                 var show = await _ard.ShowAsync(parts[1], 240, ct).ConfigureAwait(false);
                 return show is null
@@ -183,12 +185,13 @@ public class MediathekChannel : IChannel, IHasCacheKey
                     var show = await _ard.ShowAsync(t.Id, 0, ct).ConfigureAwait(false);
                     return show is null ? null : new ChannelItemInfo
                     {
-                        Id = "show" + Sep + t.Id,
+                        Id = "sh" + Sep + t.Id,
                         Name = show.Title,
                         Overview = Join(t.Tagline, show.Synopsis),
                         Type = ChannelItemType.Folder,
                         FolderType = ChannelFolderType.Series,
-                        ImageUrl = Picture(show.ImagePoster.Length > 0 ? show.ImagePoster : (t.ImagePoster.Length > 0 ? t.ImagePoster : show.ImageWide), 640),
+                        // Querformat: so zeigt die Mediathek ihre Sendungen selbst, und die Hochkant-Fassungen sind oft nur Ausschnitte.
+                        ImageUrl = Picture(show.ImageWide.Length > 0 ? show.ImageWide : (t.ImageWide.Length > 0 ? t.ImageWide : show.ImagePoster), 960),
                         Studios = show.Publisher.Length > 0 ? new List<string> { show.Publisher } : new List<string>(),
                         DateModified = LayoutChanged,
                     };
@@ -316,10 +319,10 @@ public class MediathekChannel : IChannel, IHasCacheKey
 
         var sources = Sources(video, ticks);
 
-        var image = isMovie && teaser.ImagePoster.Length > 0 ? teaser.ImagePoster : (teaser.ImageWide.Length > 0 ? teaser.ImageWide : video.ImageWide);
+        var image = teaser.ImageWide.Length > 0 ? teaser.ImageWide : (video.ImageWide.Length > 0 ? video.ImageWide : teaser.ImagePoster);
         return new ChannelItemInfo
         {
-            Id = (isMovie ? "v" : "c") + Sep + video.Id,
+            Id = (isMovie ? "m" : "c") + Sep + video.Id,
             Name = title,
             SeriesName = isMovie ? null : Nullable(showTitle),
             Overview = Join(isEpisode ? string.Empty : teaser.Tagline, video.Synopsis),
@@ -338,7 +341,7 @@ public class MediathekChannel : IChannel, IHasCacheKey
             ProductionYear = isMovie ? null : date?.Year,
             OfficialRating = Rating(video.Rating.Length > 0 ? video.Rating : teaser.Rating),
             Studios = video.Publisher.Length > 0 ? new List<string> { video.Publisher } : new List<string>(),
-            ImageUrl = Picture(image, isMovie && teaser.ImagePoster.Length > 0 ? 640 : 960),
+            ImageUrl = Picture(image, 960),
             HomePageUrl = "https://www.ardmediathek.de/video/" + Uri.EscapeDataString(video.Id),
             MediaSources = sources,
             DateModified = LayoutChanged,
