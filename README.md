@@ -4,12 +4,12 @@ Ein Plugin für [Jellyfin](https://jellyfin.org), das die ARD Mediathek und die 
 
 - **Mediathek als Kanal**: Unter „Kanäle“ erscheint „Mediathek“ mit den Reihen, die die Mediathek gerade auf ihrer Startseite zeigt (Serien, Filme, Dokus, …), und einer Suche. Serien haben Staffeln und Folgen, alles mit Plakaten, Bildern und Beschreibungen.
 - **Live-TV**: Die Live-Programme laufen über das Live-TV von Jellyfin, mit Programmübersicht samt Bildern für die Programme der ARD-Familie, ZDF, ZDFneo, ZDFinfo, 3sat, arte (auch französisch), KiKA, phoenix und die Deutsche Welle. Sender, die der Server sicher nicht empfangen kann (Ländersperre), bleiben aus der Liste; von den Dritten mit mehreren Regionalfassungen erscheint eine. Das erste Einschalten bereitet das Plugin im Hintergrund vor, und jeder Sender beginnt mit rund zwanzig Sekunden Vorrat: Das Bild steht nach wenigen Sekunden, und kurze Aussetzer der Leitung führen nicht gleich zu Hängern (dafür liegt das Bild etwa zwanzig Sekunden hinter dem Live-Signal).
-- **Eigene Seite in der Weboberfläche**: Der Kanal „Mediathek“ öffnet statt einer Ordnerliste eine Seite mit laufendem Programm, Suche, den Reihen der Mediathek, Serien mit Staffeln und einem Download-Knopf (im Browser). Sie übernimmt Farben und Schrift des gewählten Jellyfin-Designs und lässt sich in den Einstellungen abschalten. Mit dem Theme [Cinema Glass](https://github.com/derpfiff/cinema-glass) erscheint dieselbe Seite in dessen Stil, dazu Downloads in der Jellyfin-App und in JellyDesk.
+- **Eigene Seite in der Weboberfläche**: Der Kanal „Mediathek“ öffnet statt einer Ordnerliste eine Seite mit Suche, den Reihen der Mediathek, Serien mit Staffeln und einem Download-Knopf (im Browser). Sie übernimmt Farben und Schrift des gewählten Jellyfin-Designs und lässt sich in den Einstellungen abschalten. Die Sender bleiben in Jellyfins Bereich „Live TV“. Mit dem Theme [Cinema Glass](https://github.com/derpfiff/cinema-glass) erscheint dieselbe Seite in dessen Stil, dazu Downloads in der Jellyfin-App und in JellyDesk.
 - **Über den eigenen Server**: Auf Wunsch (Voreinstellung) laufen Videos und Live-Sender durch den Server. Für Ländersperren zählt dann sein Standort, und es lässt sich wie gewohnt im Video springen.
 
 Das Plugin braucht keine Zugangsdaten und speichert keine Videos. Titel, Bilder und Videoadressen kommen von der ARD Mediathek, die Adressen der Live-Sender aus der Filmliste von [MediathekView](https://mediathekview.de) über [MediathekViewWeb](https://mediathekviewweb.de).
 
-Stand: 0.3.0. Gebaut und geprüft gegen Jellyfin 12.4.
+Stand: 0.3.1. Gebaut und geprüft gegen Jellyfin 12.4.
 
 ## Einrichten
 

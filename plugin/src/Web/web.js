@@ -1,7 +1,8 @@
 /* Mediathek – Seite für Jellyfins eigene Weboberfläche.
    Der Kanal „Mediathek“ ist in Jellyfin eine Ordnerliste: ohne Suchfeld, mit hochkant beschnittenen Karten und ohne
-   Download. Dieses Skript legt auf die oberste Ebene des Kanals eine eigene Seite: laufendes Programm, Suche, die Reihen
-   der Mediathek, Serien mit Staffeln, Abspielen per Klick und Herunterladen im Browser.
+   Download. Dieses Skript legt auf die oberste Ebene des Kanals eine eigene Seite: Suche, die Reihen der Mediathek, Serien
+   mit Staffeln, Abspielen per Klick und Herunterladen im Browser. Die Live-Sender bleiben, wo Jellyfin sie zeigt: im
+   Bereich „Live TV“.
    Ist das Theme „Cinema Glass“ installiert, bleibt dieses Skript untätig; das Theme bringt dieselbe Seite in seinem Stil mit. */
 (function () {
     'use strict';
@@ -21,7 +22,6 @@
         return tag ? api().getScaledImageUrl(item.Id, { type: 'Primary', maxWidth: width, tag: tag, quality: 85 }) : '';
     }
     function minutes(ticks) { var m = Math.round(ticks / 6e8); return m >= 60 ? Math.floor(m / 60) + ' h ' + (m % 60) + ' min' : m + ' min'; }
-    function clock(iso) { var d = new Date(iso); return isNaN(d) ? '' : ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
 
     function probe() {
         if (state.probed || !ready()) return;
@@ -89,19 +89,6 @@
         var open = function () { if (folder) series(item, hub); else play(item, hub.closest('.page, .mainAnimatedPage')); };
         b.addEventListener('click', open);
         b.addEventListener('keydown', function (e) { if (e.key === 'Enter') open(); });
-        return b;
-    }
-
-    function liveCard(ch, hub) {
-        var p = ch.CurrentProgram || {};
-        var b = el('div', 'mth-card'); b.tabIndex = 0; b.setAttribute('role', 'button');
-        var pic = el('div', 'mth-pic'), src = p.Id ? img(p, 480) : '';
-        if (src) { var im = el('img'); im.loading = 'lazy'; im.alt = ''; im.src = src; pic.appendChild(im); } else pic.appendChild(el('span', 'mth-blank', p.Name || ch.Name));
-        pic.appendChild(el('span', 'mth-chan', ch.Name));
-        b.appendChild(pic);
-        b.appendChild(el('div', 'mth-name', p.Name || ch.Name));
-        if (p.StartDate) b.appendChild(el('div', 'mth-sub', clock(p.StartDate) + ' – ' + clock(p.EndDate)));
-        b.addEventListener('click', function () { play({ Id: ch.Id, Type: 'TvChannel' }, hub.closest('.page, .mainAnimatedPage')); });
         return b;
     }
 
@@ -200,17 +187,10 @@
         input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { clearTimeout(timer); search(hub, input.value); } e.stopPropagation(); });
         hub.results = el('div', 'mth-results'); hub.appendChild(hub.results);
         hub.body = el('div', 'mth-body'); hub.appendChild(hub.body);
-        var live = shelf(t('Jetzt im TV', 'On now')); live.root.hidden = true; hub.body.appendChild(live.root);
         var resume = shelf(t('Weiterschauen', 'Continue watching')); resume.root.hidden = true; hub.body.appendChild(resume.root);
         hub.rows = el('div'); hub.body.appendChild(hub.rows);
         hub.detail = el('div', 'mth-detail'); hub.appendChild(hub.detail);
         page.appendChild(hub); page.classList.add('mth-on'); page.__mth = hub;
-        var a = api();
-        get('LiveTv/Channels', { userId: a.getCurrentUserId(), addCurrentProgram: true, limit: 120, enableImages: true, enableUserData: false }).then(function (r) {
-            var list = ((r && r.Items) || []).slice().sort(function (x, y) { return (parseFloat(x.ChannelNumber) || 999) - (parseFloat(y.ChannelNumber) || 999); });
-            list.forEach(function (ch) { live.row.appendChild(liveCard(ch, hub)); });
-            live.root.hidden = !list.length;
-        }).catch(function () { /* ohne Live-TV bleibt die Reihe weg */ });
         get('Mediathek/resume').then(function (r) {
             var items = (r && r.Items) || [];
             items.forEach(function (it) { resume.row.appendChild(card(it, hub)); });
@@ -241,4 +221,6 @@
     window.addEventListener('hashchange', schedule);
     var wait = setInterval(function () { if (ready()) { clearInterval(wait); schedule(); } }, 400);
     setTimeout(function () { clearInterval(wait); }, 120000);
+    // Jellyfin baut Seiten nach und nach auf und meldet nicht jeden Wechsel: gelegentlich nachsehen kostet nichts.
+    setInterval(function () { if (!document.hidden) refresh(); }, 1500);
 })();
