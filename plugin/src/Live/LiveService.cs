@@ -56,6 +56,16 @@ public sealed partial class LiveService
         ("ORF", "ORF-Sport", "orf-sport", "ORF Sport +", "Ausland", null),
     };
 
+    // Sender mit mehreren Regionalfassungen: Kennung im ARD-Programm → bevorzugte Fassung und Name ohne Region.
+    private static readonly Dictionary<string, (string Preferred, string Name)> Families = new()
+    {
+        ["br"] = ("br-sued", "BR Fernsehen"),
+        ["mdr"] = ("mdr-sachsen", "MDR Fernsehen"),
+        ["ndr"] = ("ndr-niedersachsen", "NDR Fernsehen"),
+        ["rbb"] = ("rbb-berlin", "rbb Fernsehen"),
+        ["swr"] = ("swr-bw", "SWR Fernsehen"),
+    };
+
     private static readonly TimeSpan ChannelCacheTime = TimeSpan.FromHours(6);
     private static readonly TimeSpan GuideCacheTime = TimeSpan.FromHours(2);
 
@@ -80,7 +90,7 @@ public sealed partial class LiveService
 
     public async Task<IReadOnlyList<LiveChannel>> GetChannelsAsync(CancellationToken ct)
     {
-        var key = Config.IncludeForeign + "/" + Config.IncludeRegionalWindows;
+        var key = Config.IncludeForeign + "/" + Config.IncludeRegionalWindows + "/" + Config.IncludeRegionalVariants;
         if (_channels is { } hit && hit.Key == key && DateTime.UtcNow - hit.At < ChannelCacheTime)
         {
             return hit.Channels;
@@ -130,6 +140,22 @@ public sealed partial class LiveService
                 result.Add(new LiveChannel(k.Id, k.Name, k.Group, Https(entry.UrlVideo), k.Guide, number++));
             }
 
+            // Dritte Programme senden je Land eine eigene Fassung, die sich nur in den Regionalnachrichten unterscheidet. Ohne
+            // ausdrücklichen Wunsch bleibt je Sender eine Fassung, unter dem Namen des Senders.
+            if (!Config.IncludeRegionalVariants)
+            {
+                foreach (var family in result.Where(c => c.GuideId is not null && Families.ContainsKey(c.GuideId)).GroupBy(c => c.GuideId!).Where(g => g.Count() > 1).ToList())
+                {
+                    var (preferred, name) = Families[family.Key];
+                    var keep = family.FirstOrDefault(c => c.Id == preferred) ?? family.First();
+                    result.RemoveAll(c => c.GuideId == family.Key && c.Id != keep.Id);
+                    result[result.FindIndex(c => c.Id == keep.Id)] = keep with { Name = name };
+                }
+
+                result = result.Select((c, i) => c with { Number = i + 1 }).ToList();
+                number = result.Count + 1;
+            }
+
             // Was die Filmliste sonst noch an Livestreams kennt, hängt hinten an.
             foreach (var e in streams.Where(e => !used.Contains(e.Id)))
             {
@@ -149,11 +175,32 @@ public sealed partial class LiveService
                 result.Add(new LiveChannel(id, name, regional ? "Lokalfenster" : "Weitere", Https(e.UrlVideo), null, number++));
             }
 
-            // Sender aus dem Ausland sind oft nur dort abrufbar. Was der Server nicht erreicht, bleibt aus der Liste, statt
-            // beim Einschalten mit einem Fehler zu enden.
-            var reachable = await Task.WhenAll(result.Select(c => c.Group == "Ausland" ? ReachableAsync(c.Url, ct) : Task.FromResult(true))).ConfigureAwait(false);
-            _left = result.Where((_, i) => !reachable[i]).ToList();
-            result = result.Where((_, i) => reachable[i]).Select((c, i) => c with { Number = i + 1 }).ToList();
+            // Sender, die dieser Server sicher nicht empfängt, bleiben aus der Liste, statt beim Einschalten mit einem Fehler
+            // zu enden. „Sicher“ heißt: der Sender lehnt den Abruf zweimal hintereinander ausdrücklich ab (Ländersperre).
+            // Zeitüberschreitungen und Serverfehler können vorübergehend sein; solche Sender bleiben stehen.
+            using (var gate = new SemaphoreSlim(6))
+            {
+                var blocked = await Task.WhenAll(result.Select(async c =>
+                {
+                    await gate.WaitAsync(ct).ConfigureAwait(false);
+                    try
+                    {
+                        if (!IsBlocked(await ProbeAsync(c.Url, ct).ConfigureAwait(false)))
+                        {
+                            return false;
+                        }
+
+                        await Task.Delay(1500, ct).ConfigureAwait(false);
+                        return IsBlocked(await ProbeAsync(c.Url, ct).ConfigureAwait(false));
+                    }
+                    finally
+                    {
+                        gate.Release();
+                    }
+                })).ConfigureAwait(false);
+                _left = result.Where((_, i) => blocked[i]).ToList();
+                result = result.Where((_, i) => !blocked[i]).Select((c, i) => c with { Number = i + 1 }).ToList();
+            }
 
             _channels = (DateTime.UtcNow, result, key);
             return result;
@@ -182,15 +229,7 @@ public sealed partial class LiveService
             int status;
             try
             {
-                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                timeout.CancelAfter(TimeSpan.FromSeconds(12));
-                using var response = await _http.CreateClient(ServiceRegistrator.HttpClientName)
-                    .GetAsync(entry.Channel.Url, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
-                status = (int)response.StatusCode;
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
-            {
-                status = 0;
+                status = await ProbeAsync(entry.Channel.Url, ct).ConfigureAwait(false);
             }
             finally
             {
@@ -200,16 +239,23 @@ public sealed partial class LiveService
             var ok = status is >= 200 and < 300;
             var home = entry.Channel.Id.StartsWith("orf", StringComparison.Ordinal) ? "Österreich"
                 : entry.Channel.Id == "arte-fr" ? "Frankreich oder Deutschland" : "Deutschland";
+            var kept = entry.InList ? " Der Sender bleibt in der Liste, weil das vorübergehend sein kann." : string.Empty;
             var note = ok ? string.Empty
-                : status is 403 or 451 ? "Ländersperre: nur aus " + home + " abrufbar. Dafür muss der Server dort stehen oder über ein VPN dorthin ins Netz gehen."
-                : status == 0 ? "Keine Antwort vom Sender (Zeitüberschreitung oder Verbindung abgelehnt)."
-                : "Der Sender antwortet mit Fehler " + status.ToString(CultureInfo.InvariantCulture) + ".";
+                : IsBlocked(status) ? "Ländersperre: der Sender lehnt Abrufe von diesem Server ab (Antwort " + status.ToString(CultureInfo.InvariantCulture) + "), er ist nur aus " + home
+                    + " abrufbar. Dafür müsste der Server dort stehen oder über ein VPN dorthin ins Netz gehen."
+                    + (entry.InList ? " Bei der nächsten Aktualisierung der Senderliste wird er ausgeblendet." : " Deshalb ist er ausgeblendet.")
+                : status == 0 ? "Keine Antwort vom Sender (Zeitüberschreitung oder Verbindung abgelehnt)." + kept
+                : "Der Sender antwortet mit Fehler " + status.ToString(CultureInfo.InvariantCulture) + "." + kept;
             return new LiveStatus(entry.Channel.Name, entry.Channel.Group, entry.InList, ok, status, note);
         }).ToList();
         return await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
-    private async Task<bool> ReachableAsync(string url, CancellationToken ct)
+    /// <summary>Antwort des Senders, die eine Sperre bedeutet und kein vorübergehendes Problem.</summary>
+    private static bool IsBlocked(int status) => status is 403 or 451;
+
+    /// <summary>Fragt die Senderadresse einmal ab; 0, wenn keine Antwort kam.</summary>
+    private async Task<int> ProbeAsync(string url, CancellationToken ct)
     {
         try
         {
@@ -217,11 +263,11 @@ public sealed partial class LiveService
             timeout.CancelAfter(TimeSpan.FromSeconds(12));
             using var response = await _http.CreateClient(ServiceRegistrator.HttpClientName)
                 .GetAsync(url, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
-            return response.IsSuccessStatusCode;
+            return (int)response.StatusCode;
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
-            return false;
+            return 0;
         }
     }
 

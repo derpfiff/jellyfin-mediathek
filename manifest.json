@@ -8,6 +8,14 @@
     "category": "Channels",
     "versions": [
       {
+        "version": "0.2.4.0",
+        "changelog": "Siehe Repository.",
+        "targetAbi": "12.4.0.0",
+        "sourceUrl": "https://raw.githubusercontent.com/derpfiff/jellyfin-mediathek/main/plugin/dist/mediathek_0.2.4.0.zip",
+        "checksum": "8b0596f580499b0d15f67000f271aafd",
+        "timestamp": "2026-11-14T07:36:45Z"
+      },
+      {
         "version": "0.2.3.0",
         "changelog": "Siehe Repository.",
         "targetAbi": "12.4.0.0",

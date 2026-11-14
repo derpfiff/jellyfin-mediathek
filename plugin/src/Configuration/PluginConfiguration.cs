@@ -20,6 +20,12 @@ public class PluginConfiguration : BasePluginConfiguration
     /// <summary>Schlüssel für die Prüfsummen weitergereichter Adressen; entsteht beim ersten Start von selbst.</summary>
     public string ProxyKey { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Alle Regionalfassungen eines dritten Programms anbieten (BR Süd und Nord, MDR je Land, …). Sie zeigen bis auf die
+    /// Regionalnachrichten dasselbe; ohne diese Einstellung steht je Sender nur eine Fassung in der Liste.
+    /// </summary>
+    public bool IncludeRegionalVariants { get; set; } = false;
+
     /// <summary>Lokalfenster (z. B. WDR Lokalzeit) im Live-TV mit anbieten.</summary>
     public bool IncludeRegionalWindows { get; set; } = false;
 }

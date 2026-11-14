@@ -3,12 +3,12 @@
 Ein Plugin für [Jellyfin](https://jellyfin.org), das die ARD Mediathek und die Live-Programme der öffentlich-rechtlichen Sender in den eigenen Server holt:
 
 - **Mediathek als Kanal**: Unter „Kanäle“ erscheint „Mediathek“ mit den Reihen, die die Mediathek gerade auf ihrer Startseite zeigt (Serien, Filme, Dokus, …), und einer Suche. Serien haben Staffeln und Folgen, alles mit Plakaten, Bildern und Beschreibungen.
-- **Live-TV**: Die Live-Programme laufen über das Live-TV von Jellyfin, mit Programmübersicht samt Bildern für die Programme der ARD-Familie, ZDF, ZDFneo, ZDFinfo, 3sat, arte, KiKA und phoenix. Sender aus dem Ausland erscheinen nur, wenn der Server sie erreicht.
+- **Live-TV**: Die Live-Programme laufen über das Live-TV von Jellyfin, mit Programmübersicht samt Bildern für die Programme der ARD-Familie, ZDF, ZDFneo, ZDFinfo, 3sat, arte, KiKA und phoenix. Sender, die der Server sicher nicht empfangen kann (Ländersperre), bleiben aus der Liste; von den Dritten mit mehreren Regionalfassungen erscheint eine. Das erste Einschalten bereitet das Plugin im Hintergrund vor, damit ein Sender nach etwa einer Sekunde läuft.
 - **Über den eigenen Server**: Auf Wunsch (Voreinstellung) laufen Videos und Live-Sender durch den Server. Für Ländersperren zählt dann sein Standort, und es lässt sich wie gewohnt im Video springen.
 
 Das Plugin braucht keine Zugangsdaten und speichert keine Videos. Titel, Bilder und Videoadressen kommen von der ARD Mediathek, die Adressen der Live-Sender aus der Filmliste von [MediathekView](https://mediathekview.de) über [MediathekViewWeb](https://mediathekviewweb.de).
 
-Stand: 0.2.3. Gebaut und geprüft gegen Jellyfin 12.4.
+Stand: 0.2.4. Gebaut und geprüft gegen Jellyfin 12.4.
 
 ## Einrichten
 
@@ -40,7 +40,10 @@ Für Oberflächen, die die Mediathek selbst darstellen wollen. Die ersten vier v
 | `GET /Mediathek/home` | Reihen der Startseite (Kennung, Titel, Anzahl) |
 | `GET /Mediathek/row?id=…` | Titel einer Reihe, als Jellyfin-Titel |
 | `GET /Mediathek/search?q=…` | Suche in der Mediathek, als Jellyfin-Titel |
+| `GET /Mediathek/resume` | Angefangene Titel der Mediathek, zuletzt gesehene vorn |
+| `GET /Mediathek/download?id=…` | Adresse, unter der der Server die beste Fassung eines Titels als Datei durchreicht |
 | `POST /Mediathek/live/setup` | Live-TV einrichten (Administratoren) |
+| `POST /Mediathek/live/warmup` | Sender für schnelles Einschalten vorbereiten (läuft sonst von selbst; Administratoren) |
 | `GET /Mediathek/live/status` | Empfang je Sender von diesem Server aus (Administratoren) |
 | `GET /Mediathek/live.m3u` | Senderliste für den M3U-Tuner von Jellyfin |
 | `GET /Mediathek/guide.xml` | Programmübersicht (XMLTV) |

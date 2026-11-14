@@ -36,8 +36,10 @@ public class MediathekController : ControllerBase
     private readonly ITunerHostManager _tuners;
     private readonly IListingsManager _listings;
     private readonly IConfigurationManager _config;
+    private readonly ILibraryManager _library;
+    private readonly LiveWarmup _warmup;
 
-    public MediathekController(LiveService live, LiveProxy proxy, ArdClient ard, IDtoService dto, IChannelManager channels, IUserManager users, IServerApplicationHost host, ITunerHostManager tuners, IListingsManager listings, IConfigurationManager config)
+    public MediathekController(LiveService live, LiveProxy proxy, ArdClient ard, IDtoService dto, IChannelManager channels, IUserManager users, IServerApplicationHost host, ITunerHostManager tuners, IListingsManager listings, IConfigurationManager config, ILibraryManager library, LiveWarmup warmup)
     {
         _live = live;
         _proxy = proxy;
@@ -49,6 +51,8 @@ public class MediathekController : ControllerBase
         _tuners = tuners;
         _listings = listings;
         _config = config;
+        _library = library;
+        _warmup = warmup;
     }
 
     // Beide Adressen ruft Jellyfin selbst ab, ohne Anmeldung. Sie enthalten nur öffentliche Angaben der Sender.
@@ -163,6 +167,69 @@ public class MediathekController : ControllerBase
         return await Listing(new[] { MediathekChannel.SearchFolder, MediathekChannel.SearchId(q) }, order, ct).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Die angefangenen Titel der Mediathek, zuletzt gesehene vorn. Jellyfin merkt sich die Stelle wie bei jedem anderen
+    /// Titel; seine eigene Liste „Weiterschauen“ führt Titel aus Kanälen aber nicht überall auf.
+    /// </summary>
+    [HttpGet("resume")]
+    [Authorize]
+    public async Task<ActionResult<QueryResult<BaseItemDto>>> Resume()
+    {
+        if (!Guid.TryParse(User.FindFirst("Jellyfin-UserId")?.Value, out var userId) || _users.GetUserById(userId) is not { } user)
+        {
+            return Unauthorized();
+        }
+
+        var all = await _channels.GetChannelsInternalAsync(new ChannelQuery { UserId = userId }).ConfigureAwait(false);
+        var channel = all.Items.FirstOrDefault(c => string.Equals(c.Name, "Mediathek", StringComparison.Ordinal));
+        if (channel is null)
+        {
+            return new QueryResult<BaseItemDto>();
+        }
+
+        var items = _library.GetItemList(new InternalItemsQuery(user)
+        {
+            ChannelIds = new[] { channel.Id },
+            IsResumable = true,
+            IsFolder = false,
+            Recursive = true,
+        });
+        var options = new DtoOptions { Fields = new[] { ItemFields.Overview, ItemFields.PrimaryImageAspectRatio } };
+        var dtos = _dto.GetBaseItemDtos(items, options, user)
+            .OrderByDescending(d => d.UserData?.LastPlayedDate ?? DateTime.MinValue)
+            .Take(24)
+            .ToList();
+        return new QueryResult<BaseItemDto>(dtos);
+    }
+
+    /// <summary>
+    /// Wo sich ein Titel der Mediathek als Datei abholen lässt: die beste Fassung, durch den Server gereicht (mit
+    /// Teilabrufen, also fortsetzbar). Apps mit Download-Verwaltung laden so von ihrem Server wie bei jedem anderen Titel.
+    /// </summary>
+    [HttpGet("download")]
+    [Authorize]
+    public ActionResult Download([FromQuery] Guid id, CancellationToken ct)
+    {
+        var item = _library.GetItemById(id);
+        if (item is null)
+        {
+            return NotFound();
+        }
+
+        var source = _channels.GetStaticMediaSources(item, ct)
+            .Where(s => s.Id is not null && s.Id.StartsWith(MediathekChannel.SourcePrefix, StringComparison.Ordinal)
+                && s.Path is not null && s.Path.StartsWith("https://", StringComparison.Ordinal)
+                && !s.Path.Contains(".m3u8", StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(s => s.Bitrate ?? 0)
+            .FirstOrDefault();
+        if (source is null)
+        {
+            return NotFound();
+        }
+
+        return new JsonResult(new { path = "Mediathek/" + LiveProxy.VodPath(source.Path!), container = "mp4", bitrate = source.Bitrate ?? 0 });
+    }
+
     // Jellyfin legt den Inhalt eines Kanal-Ordners in einer Datei ab; öffnen zwei Anfragen zugleich Ordner desselben Kanals,
     // liest die eine, was die andere gerade schreibt. Das Öffnen läuft deshalb nacheinander.
     private static readonly SemaphoreSlim ListingGate = new(1, 1);
@@ -262,6 +329,12 @@ public class MediathekController : ControllerBase
     [Authorize(Policy = "RequiresElevation")]
     public async Task<ActionResult> LiveStatus(CancellationToken ct) =>
         new JsonResult(new { channels = await _live.GetStatusAsync(ct).ConfigureAwait(false) });
+
+    /// <summary>Bereitet die Sender für schnelles Einschalten vor (siehe <see cref="LiveWarmup"/>); läuft sonst von selbst.</summary>
+    [HttpPost("live/warmup")]
+    [Authorize(Policy = "RequiresElevation")]
+    public async Task<ActionResult> WarmupLive(CancellationToken ct) =>
+        new JsonResult(new { prepared = await _warmup.RunAsync(ct).ConfigureAwait(false) });
 
     [HttpPost("live/setup")]
     [Authorize(Policy = "RequiresElevation")]

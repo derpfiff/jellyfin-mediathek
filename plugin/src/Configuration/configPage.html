@@ -23,6 +23,10 @@
 
         <h3>Live-TV</h3>
         <div class="checkboxContainer checkboxContainer-withDescription">
+          <label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" data-k="IncludeRegionalVariants"><span>Alle Regionalfassungen der dritten Programme anbieten (BR Süd und Nord, MDR je Land, …)</span></label>
+          <div class="fieldDescription checkboxFieldDescription">Die Fassungen zeigen bis auf die Regionalnachrichten dasselbe. Abgeschaltet steht je Sender eine Fassung in der Liste.</div>
+        </div>
+        <div class="checkboxContainer checkboxContainer-withDescription">
           <label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" data-k="IncludeRegionalWindows"><span>Lokalfenster mit anbieten (z. B. WDR Lokalzeit)</span></label>
         </div>
         <div class="checkboxContainer checkboxContainer-withDescription">
@@ -33,7 +37,7 @@
         <div class="fieldDescription" id="MediathekLiveResult"></div>
 
         <h3>Empfang</h3>
-        <p>Manche Sender lassen sich nur aus ihrem Sendeland abrufen. Die Prüfung fragt jeden Sender einmal von diesem Server aus ab.</p>
+        <p>Manche Sender lassen sich nur aus ihrem Sendeland abrufen. Was dieser Server sicher nicht empfängt (der Sender lehnt den Abruf zweimal ausdrücklich ab), erscheint im Live-TV gar nicht erst. Die Prüfung fragt jeden Sender von diesem Server aus ab und nennt den Grund.</p>
         <button is="emby-button" type="button" id="MediathekStatusCheck" class="raised block emby-button"><span>Sender prüfen</span></button>
         <div id="MediathekStatus" style="margin-top:1em"></div>
 
@@ -95,7 +99,7 @@
             var ok = c.Reachable || c.reachable, tr = document.createElement('tr');
             tr.style.borderTop = '1px solid rgba(128,128,128,.25)';
             [[c.Name || c.name, 'padding:.5em .8em .5em 0;white-space:nowrap;font-weight:600'],
-             [ok ? 'empfangbar' : 'nicht empfangbar', 'padding:.5em .8em;white-space:nowrap;color:' + (ok ? '#4caf50' : '#ef5350')],
+             [ok ? 'empfangbar' : ((c.InList !== undefined ? c.InList : c.inList) ? 'nicht empfangbar' : 'ausgeblendet'), 'padding:.5em .8em;white-space:nowrap;color:' + (ok ? '#4caf50' : '#ef5350')],
              [ok ? '' : (c.Note || c.note || ''), 'padding:.5em 0;opacity:.85']].forEach(function (cell) {
               var td = document.createElement('td'); td.textContent = cell[0]; td.style.cssText = cell[1]; tr.appendChild(td);
             });
