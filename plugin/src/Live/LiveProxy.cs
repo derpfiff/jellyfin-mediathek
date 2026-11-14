@@ -322,6 +322,21 @@ public sealed partial class LiveProxy
             return;
         }
 
+        await RelayAsync(context, target, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Pfad (ab <c>Mediathek/</c>), unter dem ein Video abgespielt wird, dessen Adresse beim Sender noch nicht bekannt ist:
+    /// sie wird erst beim Abruf herausgesucht (siehe <c>MediathekController.Play</c>).
+    /// </summary>
+    public static string PlayPath(string videoId, int width) =>
+        "play/" + PlaySignature(videoId) + "/" + width.ToString(CultureInfo.InvariantCulture) + "/" + Uri.EscapeDataString(videoId) + ".mp4";
+
+    public static string PlaySignature(string videoId) => Sign("play|" + videoId);
+
+    /// <summary>Reicht die Datei unter <paramref name="target"/> durch, samt Teilabrufen.</summary>
+    public async Task RelayAsync(HttpContext context, Uri target, CancellationToken ct)
+    {
         var head = HttpMethods.IsHead(context.Request.Method);
         using var request = new HttpRequestMessage(head ? HttpMethod.Head : HttpMethod.Get, target);
         request.Headers.UserAgent.ParseAdd("Jellyfin-Mediathek/0.2");

@@ -56,6 +56,15 @@ public sealed partial class ArdClient
     private const string Api = "https://api.ardmediathek.de";
     private static readonly TimeSpan CacheTime = TimeSpan.FromMinutes(30);
 
+    /// <summary>So viele Folgen liefert die Folgenliste einer Sendung je Abruf.</summary>
+    private const int ListPage = 200;
+
+    /// <summary>Die Fassungen, in denen die Mediathek ihre Videos anbietet, beste zuerst.</summary>
+    public static readonly IReadOnlyList<(string Label, int Width, int Height)> Ladder = new[]
+    {
+        ("HD 1080p", 1920, 1080), ("HD 720p", 1280, 720), ("SD 540p", 960, 540), ("SD 360p", 640, 360),
+    };
+
     private readonly IHttpClientFactory _http;
     private readonly ILogger<ArdClient> _logger;
     private readonly ConcurrentDictionary<string, (DateTime At, object Value)> _cache = new();
@@ -228,26 +237,26 @@ public sealed partial class ArdClient
                 }
             }
 
-            // Weitere Seiten der Folgenliste.
-            for (var page = 1; episodes.Count < Math.Min(total, maxEpisodes) && page < 12; page++)
+            // Weitere Folgen: die Übersichtsseite nennt höchstens 48, die Folgenliste selbst gibt 200 je Abruf her. Ihre
+            // Seiten werden gleichzeitig geholt und in ihrer Reihenfolge angefügt.
+            var wanted = Math.Min(total, maxEpisodes);
+            if (wanted > episodes.Count)
             {
-                try
+                var pages = await Task.WhenAll(Enumerable.Range(0, Math.Min((wanted + ListPage - 1) / ListPage, 6)).Select(async page =>
                 {
-                    using var more = await Get(Api + "/page-gateway/widgets/ard/asset/" + Uri.EscapeDataString(id) + "?pageNumber=" + page.ToString(CultureInfo.InvariantCulture)
-                        + "&pageSize=48&embedded=true&seasoned=false&seasonNumber=&withAudiodescription=false&withOriginalWithSubtitle=false&withOriginalversion=false&single=false", ct).ConfigureAwait(false);
-                    var next = Teasers(more.RootElement).Where(t => !t.IsShow).ToList();
-                    if (next.Count == 0)
+                    try
                     {
-                        break;
+                        using var more = await Get(Api + "/page-gateway/widgets/ard/asset/" + Uri.EscapeDataString(id) + "?pageNumber=" + page.ToString(CultureInfo.InvariantCulture)
+                            + "&pageSize=" + ListPage.ToString(CultureInfo.InvariantCulture) + "&embedded=true&seasoned=false&seasonNumber=&withAudiodescription=false&withOriginalWithSubtitle=false&withOriginalversion=false&single=false", ct).ConfigureAwait(false);
+                        return Teasers(more.RootElement).Where(t => !t.IsShow).ToList();
                     }
-
-                    episodes.AddRange(next);
-                }
-                catch (Exception ex) when (ex is not OperationCanceledException)
-                {
-                    _logger.LogWarning(ex, "Mediathek: weitere Folgen von {Show} ließen sich nicht laden", id);
-                    break;
-                }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        _logger.LogWarning(ex, "Mediathek: weitere Folgen von {Show} ließen sich nicht laden", id);
+                        return new List<ArdTeaser>();
+                    }
+                })).ConfigureAwait(false);
+                episodes.AddRange(pages.SelectMany(p => p));
             }
 
             var images = root.TryGetProperty("images", out var im) ? im : default;

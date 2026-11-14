@@ -208,26 +208,80 @@ public class MediathekController : ControllerBase
     /// </summary>
     [HttpGet("download")]
     [Authorize]
-    public ActionResult Download([FromQuery] Guid id, CancellationToken ct)
+    public async Task<ActionResult> Download([FromQuery] Guid id, CancellationToken ct)
     {
-        var item = _library.GetItemById(id);
-        if (item is null)
+        // Die Kennung des Titels im Kanal ist „c|…“ oder „m|…“ mit der Kennung des Videos in der Mediathek.
+        var external = _library.GetItemById(id)?.ExternalId ?? string.Empty;
+        var cut = external.IndexOf('|', StringComparison.Ordinal);
+        if (cut <= 0 || external[..cut] is not ("c" or "m" or "v"))
         {
             return NotFound();
         }
 
-        var source = _channels.GetStaticMediaSources(item, ct)
-            .Where(s => s.Id is not null && s.Id.StartsWith(MediathekChannel.SourcePrefix, StringComparison.Ordinal)
-                && s.Path is not null && s.Path.StartsWith("https://", StringComparison.Ordinal)
-                && !s.Path.Contains(".m3u8", StringComparison.OrdinalIgnoreCase))
-            .OrderByDescending(s => s.Bitrate ?? 0)
-            .FirstOrDefault();
-        if (source is null)
+        var best = await Best(external[(cut + 1)..], int.MaxValue, ct).ConfigureAwait(false);
+        if (best is null)
         {
             return NotFound();
         }
 
-        return new JsonResult(new { path = "Mediathek/" + LiveProxy.VodPath(source.Path!), container = "mp4", bitrate = source.Bitrate ?? 0 });
+        return new JsonResult(new { path = "Mediathek/" + LiveProxy.VodPath(best.Url), container = "mp4", bitrate = MediathekChannel.BitrateFor(best.Width) });
+    }
+
+    /// <summary>
+    /// Spielt ein Video, dessen Adresse beim Sender erst jetzt herausgesucht wird: Listen langer Sendungen nennen nur die
+    /// Kennung des Videos. Je nach Einstellung läuft die Datei durch den Server oder der Abruf wird zum Sender umgeleitet.
+    /// </summary>
+    [HttpGet("play/{signature}/{width:int}/{name}")]
+    [HttpHead("play/{signature}/{width:int}/{name}")]
+    [AllowAnonymous]
+    public async Task Play([FromRoute] string signature, [FromRoute] int width, [FromRoute] string name, CancellationToken ct)
+    {
+        var videoId = name.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) ? name[..^4] : name;
+        if (!System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(LiveProxy.PlaySignature(videoId)), Encoding.ASCII.GetBytes(signature)))
+        {
+            Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+
+        ArdStream? stream;
+        try
+        {
+            stream = await Best(videoId, width, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or System.Text.Json.JsonException)
+        {
+            Response.StatusCode = StatusCodes.Status502BadGateway;
+            return;
+        }
+
+        if (stream is null || !Uri.TryCreate(stream.Url, UriKind.Absolute, out var target))
+        {
+            // Abgelaufen oder von hier aus gesperrt.
+            Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+
+        if (Plugin.Instance?.Configuration.ViaServer ?? true)
+        {
+            await _proxy.RelayAsync(HttpContext, target, ct).ConfigureAwait(false);
+        }
+        else
+        {
+            Response.Headers["Cache-Control"] = "no-store";
+            Response.Redirect(target.AbsoluteUri);
+        }
+    }
+
+    /// <summary>Die Fassung eines Videos mit der gewünschten Bildbreite, sonst die nächstkleinere, sonst die kleinste.</summary>
+    private async Task<ArdStream?> Best(string videoId, int width, CancellationToken ct)
+    {
+        var video = await _ard.VideoAsync(videoId, ct).ConfigureAwait(false);
+        if (video is null || video.Streams.Count == 0)
+        {
+            return null;
+        }
+
+        return video.Streams.Where(s => s.Width <= width).MaxBy(s => s.Width) ?? video.Streams.MinBy(s => s.Width);
     }
 
     // Jellyfin legt den Inhalt eines Kanal-Ordners in einer Datei ab; öffnen zwei Anfragen zugleich Ordner desselben Kanals,

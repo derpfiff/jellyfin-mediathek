@@ -8,7 +8,7 @@ Ein Plugin für [Jellyfin](https://jellyfin.org), das die ARD Mediathek und die 
 
 Das Plugin braucht keine Zugangsdaten und speichert keine Videos. Titel, Bilder und Videoadressen kommen von der ARD Mediathek, die Adressen der Live-Sender aus der Filmliste von [MediathekView](https://mediathekview.de) über [MediathekViewWeb](https://mediathekviewweb.de).
 
-Stand: 0.2.7. Gebaut und geprüft gegen Jellyfin 12.4.
+Stand: 0.2.8. Gebaut und geprüft gegen Jellyfin 12.4.
 
 ## Einrichten
 
@@ -48,6 +48,7 @@ Für Oberflächen, die die Mediathek selbst darstellen wollen. Die ersten vier v
 | `GET /Mediathek/live.m3u` | Senderliste für den M3U-Tuner von Jellyfin |
 | `GET /Mediathek/guide.xml` | Programmübersicht (XMLTV) |
 | `GET /Mediathek/live/…`, `/Mediathek/vod/…`, `/Mediathek/img/…` | Live-Sender, Videos und Bilder, durch den Server gereicht |
+| `GET /Mediathek/play/…` | Folge einer Sendung abspielen; die Adresse beim Sender wird erst bei diesem Abruf herausgesucht |
 
 Durchgereicht wird nur, was der Server selbst ausgegeben hat: jede dieser Adressen trägt eine Prüfsumme mit einem Schlüssel, den das Plugin beim ersten Start würfelt. Als offener Proxy lässt es sich nicht benutzen.
 
