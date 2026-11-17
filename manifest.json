@@ -9,7 +9,7 @@
     "versions": [
       {
         "version": "0.3.4.0",
-        "changelog": "Siehe Repository.",
+        "changelog": "- Neuigkeiten nach Updates: Nach einem Update zeigt Cinema Glass, was sich in der Mediathek geändert hat.",
         "targetAbi": "12.4.0.0",
         "sourceUrl": "https://raw.githubusercontent.com/derpfiff/jellyfin-mediathek/main/plugin/dist/mediathek_0.3.4.0.zip",
         "checksum": "0e7ee88e35001683042b4b960598822b",
@@ -17,7 +17,7 @@
       },
       {
         "version": "0.3.3.0",
-        "changelog": "Siehe Repository.",
+        "changelog": "- Einstellungen auf Englisch: Die Einstellungsseite folgt jetzt Jellyfins Sprache.",
         "targetAbi": "12.4.0.0",
         "sourceUrl": "https://raw.githubusercontent.com/derpfiff/jellyfin-mediathek/main/plugin/dist/mediathek_0.3.3.0.zip",
         "checksum": "3b9bad1c8220f1b2444dfed191d5ab53",
@@ -25,7 +25,7 @@
       },
       {
         "version": "0.3.2.0",
-        "changelog": "Siehe Repository.",
+        "changelog": "- Normaler Ton statt Audiodeskription: Gibt es einen Titel in beiden Fassungen, läuft er jetzt mit dem normalen Sendeton.\n- Einfachere Installation: Die Projektbeschreibung zeigt Bildschirmfotos und einen gemeinsamen Katalog mit Cinema Glass und Jellyscribe.",
         "targetAbi": "12.4.0.0",
         "sourceUrl": "https://raw.githubusercontent.com/derpfiff/jellyfin-mediathek/main/plugin/dist/mediathek_0.3.2.0.zip",
         "checksum": "27049f1f675ede016b9ec2bba25fcd21",
@@ -33,7 +33,7 @@
       },
       {
         "version": "0.3.1.0",
-        "changelog": "Siehe Repository.",
+        "changelog": "- Aufgeräumte Mediathek-Seite: Die Mediathek-Seite zeigt nur noch die Mediathek, die Sender bleiben im Bereich „Live TV“.",
         "targetAbi": "12.4.0.0",
         "sourceUrl": "https://raw.githubusercontent.com/derpfiff/jellyfin-mediathek/main/plugin/dist/mediathek_0.3.1.0.zip",
         "checksum": "1c8b3d709167ecd0c615335ee609131a",
@@ -41,7 +41,7 @@
       },
       {
         "version": "0.3.0.0",
-        "changelog": "Siehe Repository.",
+        "changelog": "- Eigene Mediathek-Seite: Jellyfins Weboberfläche hat jetzt eine eigene Mediathek-Seite mit laufendem Programm, Suche, Reihen und Serien mit Staffeln, auch ohne Theme.\n- Download im Browser: Titel lassen sich direkt im Browser herunterladen.",
         "targetAbi": "12.4.0.0",
         "sourceUrl": "https://raw.githubusercontent.com/derpfiff/jellyfin-mediathek/main/plugin/dist/mediathek_0.3.0.0.zip",
         "checksum": "035a960d357ef4738f07fa8609fb0c49",
@@ -49,7 +49,7 @@
       },
       {
         "version": "0.2.10.0",
-        "changelog": "Siehe Repository.",
+        "changelog": "- Download-Fortschritt: Oberflächen können anzeigen, wie weit laufende Downloads sind.",
         "targetAbi": "12.4.0.0",
         "sourceUrl": "https://raw.githubusercontent.com/derpfiff/jellyfin-mediathek/main/plugin/dist/mediathek_0.2.10.0.zip",
         "checksum": "d6c85ade46d511bf06749f12472e4cac",
@@ -57,7 +57,7 @@
       },
       {
         "version": "0.2.9.0",
-        "changelog": "Siehe Repository.",
+        "changelog": "- Live-Sender laufen ruhiger: Live-Sender zeigen nach wenigen Sekunden ein Bild und stocken seltener.\n- Mediathek-Titel wie gewohnt: Umrechnen und Jellyfins Detailseite funktionieren jetzt auch für Mediathek-Titel.\n- Vollständigere Suche: Folgen haben ihre Beschreibung, und keine Sendung fehlt mehr in Suche oder Reihen.",
         "targetAbi": "12.4.0.0",
         "sourceUrl": "https://raw.githubusercontent.com/derpfiff/jellyfin-mediathek/main/plugin/dist/mediathek_0.2.9.0.zip",
         "checksum": "544e72d024f6d92c5e10ffa10159f5ed",
@@ -65,7 +65,7 @@
       },
       {
         "version": "0.2.8.0",
-        "changelog": "Siehe Repository.",
+        "changelog": "- Große Sendungen öffnen schneller: Sendungen mit vielen Folgen öffnen in zwei bis drei statt zehn Sekunden.",
         "targetAbi": "12.4.0.0",
         "sourceUrl": "https://raw.githubusercontent.com/derpfiff/jellyfin-mediathek/main/plugin/dist/mediathek_0.2.8.0.zip",
         "checksum": "f11a876de97a5fb5cc65ec2ad5565157",
@@ -73,7 +73,7 @@
       },
       {
         "version": "0.2.7.0",
-        "changelog": "Siehe Repository.",
+        "changelog": "- Lückenlose Programmübersicht: Zwischen kurzen Sendungen bleiben in der Programmübersicht keine Lücken mehr.",
         "targetAbi": "12.4.0.0",
         "sourceUrl": "https://raw.githubusercontent.com/derpfiff/jellyfin-mediathek/main/plugin/dist/mediathek_0.2.7.0.zip",
         "checksum": "81d2c96bef9ffb4256bcf0f3c25028ab",
@@ -81,7 +81,7 @@
       },
       {
         "version": "0.2.6.0",
-        "changelog": "Siehe Repository.",
+        "changelog": "- Bilder im Querformat: Sendungen und Filme erscheinen mit Bildern im Querformat.",
         "targetAbi": "12.4.0.0",
         "sourceUrl": "https://raw.githubusercontent.com/derpfiff/jellyfin-mediathek/main/plugin/dist/mediathek_0.2.6.0.zip",
         "checksum": "41ad8ba8b6a706d5b037d5de9782cb7a",
@@ -89,7 +89,7 @@
       },
       {
         "version": "0.2.5.0",
-        "changelog": "Siehe Repository.",
+        "changelog": "- Mehr Programmübersicht: Die Programmübersicht gibt es jetzt auch für Deutsche Welle und arte (französisch).",
         "targetAbi": "12.4.0.0",
         "sourceUrl": "https://raw.githubusercontent.com/derpfiff/jellyfin-mediathek/main/plugin/dist/mediathek_0.2.5.0.zip",
         "checksum": "84a5303ff0837fecb1c46369dbcf8647",
@@ -97,7 +97,7 @@
       },
       {
         "version": "0.2.4.0",
-        "changelog": "Siehe Repository.",
+        "changelog": "- Schneller einschalten: Live-Sender starten schneller.\n- Aufgeräumte Senderliste: Sender, die sicher gesperrt sind, bleiben aus der Liste, und jeder Regionalsender erscheint nur einmal.\n- Weiterschauen und Download: Oberflächen sehen angefangene Titel und können sie herunterladen.",
         "targetAbi": "12.4.0.0",
         "sourceUrl": "https://raw.githubusercontent.com/derpfiff/jellyfin-mediathek/main/plugin/dist/mediathek_0.2.4.0.zip",
         "checksum": "8b0596f580499b0d15f67000f271aafd",
@@ -105,7 +105,7 @@
       },
       {
         "version": "0.2.3.0",
-        "changelog": "Siehe Repository.",
+        "changelog": "- Beiträge im Web-Player: Einzelne Beiträge einer Sendung spielen jetzt auch im Web-Player.\n- Sender prüfen: Auf der Einstellungsseite lässt sich prüfen, welche Sender dieser Server empfängt.\n- Bitrate je Fassung: Bei jeder Fassung steht die Bitrate.",
         "targetAbi": "12.4.0.0",
         "sourceUrl": "https://raw.githubusercontent.com/derpfiff/jellyfin-mediathek/main/plugin/dist/mediathek_0.2.3.0.zip",
         "checksum": "7f140f27d348af8b0b8b4e646c13628b",
@@ -113,7 +113,7 @@
       },
       {
         "version": "0.2.2.0",
-        "changelog": "Siehe Repository.",
+        "changelog": "- Live-Sender mit Ton: Live-Sender spielen wieder mit Ton, bestehende Einrichtungen werden beim Start automatisch berichtigt.\n- Übersichtlichere Suche: Die Suche zeigt einen Treffer je Sendung.",
         "targetAbi": "12.4.0.0",
         "sourceUrl": "https://raw.githubusercontent.com/derpfiff/jellyfin-mediathek/main/plugin/dist/mediathek_0.2.2.0.zip",
         "checksum": "8f6a71432d77a8f662e3e942ff8bfbfb",
@@ -121,7 +121,7 @@
       },
       {
         "version": "0.2.1.0",
-        "changelog": "Siehe Repository.",
+        "changelog": "- Programmübersicht für ZDF: Die Programmübersicht gibt es jetzt auch für ZDF, ZDFneo und ZDFinfo.\n- Fehlerbehebungen: Unerreichbare Auslandssender bleiben aus der Liste, und die Suche zeigt genaue Treffer zuerst.",
         "targetAbi": "12.4.0.0",
         "sourceUrl": "https://raw.githubusercontent.com/derpfiff/jellyfin-mediathek/main/plugin/dist/mediathek_0.2.1.0.zip",
         "checksum": "8e5b8bd07bfdf83a113d7c2a6ad05ef8",
@@ -129,7 +129,7 @@
       },
       {
         "version": "0.2.0.0",
-        "changelog": "Siehe Repository.",
+        "changelog": "- ARD Mediathek: Die ARD Mediathek ist dabei, mit Bildern, Serien und Staffeln.\n- Alles über den Server: Videos, Live-Sender und Bilder kommen jetzt über den Jellyfin-Server.\n- Suche: Die Mediathek lässt sich durchsuchen.",
         "targetAbi": "12.4.0.0",
         "sourceUrl": "https://raw.githubusercontent.com/derpfiff/jellyfin-mediathek/main/plugin/dist/mediathek_0.2.0.0.zip",
         "checksum": "a63678fac4735af7f211690b583d7ce4",
@@ -137,7 +137,7 @@
       },
       {
         "version": "0.1.0.0",
-        "changelog": "Siehe Repository.",
+        "changelog": "- Die Mediathek ist da: Ein eigener Kanal bringt Sender, Sendungen und Suche aus den öffentlich-rechtlichen Mediatheken.\n- Live-TV: Die Sender laufen live, mit Programmübersicht.",
         "targetAbi": "12.4.0.0",
         "sourceUrl": "https://raw.githubusercontent.com/derpfiff/jellyfin-mediathek/main/plugin/dist/mediathek_0.1.0.0.zip",
         "checksum": "cdc4f845220deab5496772d410a42db8",

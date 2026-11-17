@@ -1,5 +1,22 @@
 [
   {
+    "version": "0.3.4",
+    "date": "2026-11-17",
+    "items": [
+      {
+        "icon": "bell",
+        "de": [
+          "Neuigkeiten nach Updates",
+          "Nach einem Update zeigt Cinema Glass, was sich in der Mediathek geändert hat."
+        ],
+        "en": [
+          "What’s new after updates",
+          "After an update, Cinema Glass shows what changed in Mediathek."
+        ]
+      }
+    ]
+  },
+  {
     "version": "0.3.3",
     "date": "2026-11-17",
     "admin": true,
@@ -13,6 +30,404 @@
         "en": [
           "Settings in English",
           "The settings page now follows Jellyfin's language."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.3.2",
+    "date": "2026-11-15",
+    "items": [
+      {
+        "icon": "play",
+        "de": [
+          "Normaler Ton statt Audiodeskription",
+          "Gibt es einen Titel in beiden Fassungen, läuft er jetzt mit dem normalen Sendeton."
+        ],
+        "en": [
+          "Regular audio instead of audio description",
+          "When a title comes in both versions, it now plays with the regular broadcast audio."
+        ]
+      },
+      {
+        "icon": "download",
+        "de": [
+          "Einfachere Installation",
+          "Die Projektbeschreibung zeigt Bildschirmfotos und einen gemeinsamen Katalog mit Cinema Glass und Jellyscribe."
+        ],
+        "en": [
+          "Easier installation",
+          "The project page now has screenshots and a shared catalog with Cinema Glass and Jellyscribe."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.3.1",
+    "date": "2026-11-14",
+    "items": [
+      {
+        "icon": "tv",
+        "de": [
+          "Aufgeräumte Mediathek-Seite",
+          "Die Mediathek-Seite zeigt nur noch die Mediathek, die Sender bleiben im Bereich „Live TV“."
+        ],
+        "en": [
+          "Tidier Mediathek page",
+          "The Mediathek page now shows only the media library; channels stay in the “Live TV” section."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.3.0",
+    "date": "2026-11-14",
+    "items": [
+      {
+        "icon": "home",
+        "de": [
+          "Eigene Mediathek-Seite",
+          "Jellyfins Weboberfläche hat jetzt eine eigene Mediathek-Seite mit laufendem Programm, Suche, Reihen und Serien mit Staffeln, auch ohne Theme."
+        ],
+        "en": [
+          "Mediathek page of its own",
+          "Jellyfin’s web interface now has its own Mediathek page with what’s on now, search, collections and series with seasons, even without a theme."
+        ]
+      },
+      {
+        "icon": "download",
+        "de": [
+          "Download im Browser",
+          "Titel lassen sich direkt im Browser herunterladen."
+        ],
+        "en": [
+          "Download in the browser",
+          "Titles can be downloaded right from the browser."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.2.10",
+    "date": "2026-11-14",
+    "items": [
+      {
+        "icon": "download",
+        "de": [
+          "Download-Fortschritt",
+          "Oberflächen können anzeigen, wie weit laufende Downloads sind."
+        ],
+        "en": [
+          "Download progress",
+          "Apps can now show how far along running downloads are."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.2.9",
+    "date": "2026-11-14",
+    "items": [
+      {
+        "icon": "tv",
+        "de": [
+          "Live-Sender laufen ruhiger",
+          "Live-Sender zeigen nach wenigen Sekunden ein Bild und stocken seltener."
+        ],
+        "en": [
+          "Smoother live channels",
+          "Live channels show a picture within seconds and stall less often."
+        ]
+      },
+      {
+        "icon": "film",
+        "de": [
+          "Mediathek-Titel wie gewohnt",
+          "Umrechnen und Jellyfins Detailseite funktionieren jetzt auch für Mediathek-Titel."
+        ],
+        "en": [
+          "Mediathek titles work like the rest",
+          "Transcoding and Jellyfin’s details page now work for Mediathek titles too."
+        ]
+      },
+      {
+        "icon": "search",
+        "de": [
+          "Vollständigere Suche",
+          "Folgen haben ihre Beschreibung, und keine Sendung fehlt mehr in Suche oder Reihen."
+        ],
+        "en": [
+          "More complete search",
+          "Episodes come with their description, and no show is missing from search or collections anymore."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.2.8",
+    "date": "2026-11-14",
+    "items": [
+      {
+        "icon": "clock",
+        "de": [
+          "Große Sendungen öffnen schneller",
+          "Sendungen mit vielen Folgen öffnen in zwei bis drei statt zehn Sekunden."
+        ],
+        "en": [
+          "Big shows open faster",
+          "Shows with many episodes open in two to three seconds instead of ten."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.2.7",
+    "date": "2026-11-14",
+    "items": [
+      {
+        "icon": "tv",
+        "de": [
+          "Lückenlose Programmübersicht",
+          "Zwischen kurzen Sendungen bleiben in der Programmübersicht keine Lücken mehr."
+        ],
+        "en": [
+          "Guide without gaps",
+          "The TV guide no longer shows gaps between short programs."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.2.6",
+    "date": "2026-11-14",
+    "items": [
+      {
+        "icon": "film",
+        "de": [
+          "Bilder im Querformat",
+          "Sendungen und Filme erscheinen mit Bildern im Querformat."
+        ],
+        "en": [
+          "Landscape artwork",
+          "Shows and movies now come with landscape artwork."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.2.5",
+    "date": "2026-11-14",
+    "items": [
+      {
+        "icon": "globe",
+        "de": [
+          "Mehr Programmübersicht",
+          "Die Programmübersicht gibt es jetzt auch für Deutsche Welle und arte (französisch)."
+        ],
+        "en": [
+          "More guide data",
+          "The TV guide now covers Deutsche Welle and arte (French) as well."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.2.4",
+    "date": "2026-11-14",
+    "items": [
+      {
+        "icon": "play",
+        "de": [
+          "Schneller einschalten",
+          "Live-Sender starten schneller."
+        ],
+        "en": [
+          "Faster tune-in",
+          "Live channels start faster."
+        ]
+      },
+      {
+        "icon": "tv",
+        "de": [
+          "Aufgeräumte Senderliste",
+          "Sender, die sicher gesperrt sind, bleiben aus der Liste, und jeder Regionalsender erscheint nur einmal."
+        ],
+        "en": [
+          "Tidier channel list",
+          "Channels that are definitely blocked stay out of the list, and each regional channel appears only once."
+        ]
+      },
+      {
+        "icon": "next",
+        "de": [
+          "Weiterschauen und Download",
+          "Oberflächen sehen angefangene Titel und können sie herunterladen."
+        ],
+        "en": [
+          "Continue watching and downloads",
+          "Apps can see titles you started and download them."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.2.3",
+    "date": "2026-11-13",
+    "items": [
+      {
+        "icon": "play",
+        "de": [
+          "Beiträge im Web-Player",
+          "Einzelne Beiträge einer Sendung spielen jetzt auch im Web-Player."
+        ],
+        "en": [
+          "Clips in the web player",
+          "Individual clips of a show now play in the web player too."
+        ]
+      },
+      {
+        "icon": "settings",
+        "de": [
+          "Sender prüfen",
+          "Auf der Einstellungsseite lässt sich prüfen, welche Sender dieser Server empfängt."
+        ],
+        "en": [
+          "Check channels",
+          "The settings page can check which channels this server can receive."
+        ]
+      },
+      {
+        "icon": "film",
+        "de": [
+          "Bitrate je Fassung",
+          "Bei jeder Fassung steht die Bitrate."
+        ],
+        "en": [
+          "Bitrate per version",
+          "Each version shows its bitrate."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.2.2",
+    "date": "2026-11-13",
+    "items": [
+      {
+        "icon": "tv",
+        "de": [
+          "Live-Sender mit Ton",
+          "Live-Sender spielen wieder mit Ton, bestehende Einrichtungen werden beim Start automatisch berichtigt."
+        ],
+        "en": [
+          "Live channels with sound",
+          "Live channels play with sound again, and existing setups are fixed automatically on startup."
+        ]
+      },
+      {
+        "icon": "search",
+        "de": [
+          "Übersichtlichere Suche",
+          "Die Suche zeigt einen Treffer je Sendung."
+        ],
+        "en": [
+          "Cleaner search",
+          "Search shows one result per show."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.2.1",
+    "date": "2026-11-13",
+    "items": [
+      {
+        "icon": "tv",
+        "de": [
+          "Programmübersicht für ZDF",
+          "Die Programmübersicht gibt es jetzt auch für ZDF, ZDFneo und ZDFinfo."
+        ],
+        "en": [
+          "Guide for ZDF",
+          "The TV guide now covers ZDF, ZDFneo and ZDFinfo."
+        ]
+      },
+      {
+        "icon": "fix",
+        "de": [
+          "Fehlerbehebungen",
+          "Unerreichbare Auslandssender bleiben aus der Liste, und die Suche zeigt genaue Treffer zuerst."
+        ],
+        "en": [
+          "Fixes",
+          "Unreachable foreign channels stay out of the list, and search shows exact matches first."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.2.0",
+    "date": "2026-11-13",
+    "items": [
+      {
+        "icon": "series",
+        "de": [
+          "ARD Mediathek",
+          "Die ARD Mediathek ist dabei, mit Bildern, Serien und Staffeln."
+        ],
+        "en": [
+          "ARD Mediathek",
+          "The ARD Mediathek is here, with artwork, series and seasons."
+        ]
+      },
+      {
+        "icon": "play",
+        "de": [
+          "Alles über den Server",
+          "Videos, Live-Sender und Bilder kommen jetzt über den Jellyfin-Server."
+        ],
+        "en": [
+          "Everything through your server",
+          "Videos, live channels and artwork now come through the Jellyfin server."
+        ]
+      },
+      {
+        "icon": "search",
+        "de": [
+          "Suche",
+          "Die Mediathek lässt sich durchsuchen."
+        ],
+        "en": [
+          "Search",
+          "The media library can be searched."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.1.0",
+    "date": "2026-11-13",
+    "items": [
+      {
+        "icon": "sparkle",
+        "de": [
+          "Die Mediathek ist da",
+          "Ein eigener Kanal bringt Sender, Sendungen und Suche aus den öffentlich-rechtlichen Mediatheken."
+        ],
+        "en": [
+          "Mediathek is here",
+          "A channel of its own brings channels, shows and search from German public TV."
+        ]
+      },
+      {
+        "icon": "tv",
+        "de": [
+          "Live-TV",
+          "Die Sender laufen live, mit Programmübersicht."
+        ],
+        "en": [
+          "Live TV",
+          "Channels play live, with a TV guide."
         ]
       }
     ]
