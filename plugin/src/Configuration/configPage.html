@@ -7,46 +7,46 @@
     <div class="content-primary">
       <form id="MediathekForm">
         <div class="sectionTitleContainer flex align-items-center"><h2 class="sectionTitle">Mediathek</h2></div>
-        <p>Die Mediathek erscheint unter „Kanäle“ als „Mediathek“, mit den Reihen ihrer Startseite und einer Suche. Geänderte Einstellungen wirken, sobald Jellyfin den Ordner das nächste Mal lädt.</p>
+        <p data-en="The Mediathek shows up under “Channels” as “Mediathek”, with the rows from its home page and a search. Changed settings take effect the next time Jellyfin loads the folder.">Die Mediathek erscheint unter „Kanäle“ als „Mediathek“, mit den Reihen ihrer Startseite und einer Suche. Geänderte Einstellungen wirken, sobald Jellyfin den Ordner das nächste Mal lädt.</p>
 
-        <h3>Wiedergabe</h3>
+        <h3 data-en="Playback">Wiedergabe</h3>
         <div class="checkboxContainer checkboxContainer-withDescription">
-          <label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" data-k="ViaServer"><span>Videos und Live-Sender über diesen Server leiten</span></label>
-          <div class="fieldDescription checkboxFieldDescription">Für Ländersperren zählt dann der Standort des Servers, nicht der des Geräts, auf dem geschaut wird. Abgeschaltet holt jedes Gerät die Videos direkt beim Sender; das spart dem Server die Bandbreite.</div>
+          <label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" data-k="ViaServer"><span data-en="Route videos and live channels through this server">Videos und Live-Sender über diesen Server leiten</span></label>
+          <div class="fieldDescription checkboxFieldDescription" data-en="Geo-restrictions then depend on where the server is, not the device you’re watching on. When off, each device fetches videos directly from the broadcaster, which saves the server’s bandwidth.">Für Ländersperren zählt dann der Standort des Servers, nicht der des Geräts, auf dem geschaut wird. Abgeschaltet holt jedes Gerät die Videos direkt beim Sender; das spart dem Server die Bandbreite.</div>
         </div>
 
-        <h3>Suche</h3>
+        <h3 data-en="Search">Suche</h3>
         <div class="inputContainer">
-          <textarea is="emby-textarea" id="MediathekSearches" rows="5" class="emby-textarea" label="Zuletzt gesucht (ein Begriff je Zeile)"></textarea>
-          <div class="fieldDescription">Jeder Begriff erscheint als Ordner unter „Mediathek → Suche“. Die Suche trägt neue Begriffe selbst ein; hier lassen sie sich aufräumen.</div>
+          <textarea is="emby-textarea" id="MediathekSearches" rows="5" class="emby-textarea" label="Zuletzt gesucht (ein Begriff je Zeile)" data-en-label="Recent searches (one per line)"></textarea>
+          <div class="fieldDescription" data-en="Each term appears as a folder in the Mediathek search. New searches are added automatically; you can tidy them up here.">Jeder Begriff erscheint als Ordner unter „Mediathek → Suche“. Die Suche trägt neue Begriffe selbst ein; hier lassen sie sich aufräumen.</div>
         </div>
 
-        <h3>Live-TV</h3>
+        <h3 data-en="Live TV">Live-TV</h3>
         <div class="checkboxContainer checkboxContainer-withDescription">
-          <label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" data-k="WebUi"><span>Eigene Mediathek-Seite in der Weboberfläche (Suche, Reihen, Serien mit Staffeln, Download)</span></label>
-          <div class="fieldDescription checkboxFieldDescription">Ersetzt die Ordnerliste des Kanals „Mediathek“. Abgeschaltet zeigt Jellyfin den Kanal wie jeden anderen. Mit dem Theme „Cinema Glass“ bleibt die Seite von selbst untätig; das Theme bringt sie in seinem Stil mit.</div>
+          <label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" data-k="WebUi"><span data-en="Custom Mediathek page in the web interface (search, rows, shows with seasons, downloads)">Eigene Mediathek-Seite in der Weboberfläche (Suche, Reihen, Serien mit Staffeln, Download)</span></label>
+          <div class="fieldDescription checkboxFieldDescription" data-en="Replaces the folder list of the “Mediathek” channel. When off, Jellyfin shows the channel like any other. With the Cinema Glass theme, this page stays out of the way – the theme brings its own version in its style.">Ersetzt die Ordnerliste des Kanals „Mediathek“. Abgeschaltet zeigt Jellyfin den Kanal wie jeden anderen. Mit dem Theme „Cinema Glass“ bleibt die Seite von selbst untätig; das Theme bringt sie in seinem Stil mit.</div>
         </div>
         <div class="checkboxContainer checkboxContainer-withDescription">
-          <label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" data-k="IncludeRegionalVariants"><span>Alle Regionalfassungen der dritten Programme anbieten (BR Süd und Nord, MDR je Land, …)</span></label>
-          <div class="fieldDescription checkboxFieldDescription">Die Fassungen zeigen bis auf die Regionalnachrichten dasselbe. Abgeschaltet steht je Sender eine Fassung in der Liste.</div>
+          <label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" data-k="IncludeRegionalVariants"><span data-en="Offer every regional version of the regional channels (BR South and North, MDR for each state, …)">Alle Regionalfassungen der dritten Programme anbieten (BR Süd und Nord, MDR je Land, …)</span></label>
+          <div class="fieldDescription checkboxFieldDescription" data-en="Apart from the regional news, the versions show the same programs. When off, each channel appears once in the list.">Die Fassungen zeigen bis auf die Regionalnachrichten dasselbe. Abgeschaltet steht je Sender eine Fassung in der Liste.</div>
         </div>
         <div class="checkboxContainer checkboxContainer-withDescription">
-          <label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" data-k="IncludeRegionalWindows"><span>Lokalfenster mit anbieten (z. B. WDR Lokalzeit)</span></label>
+          <label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" data-k="IncludeRegionalWindows"><span data-en="Also offer local windows (e.g. WDR Lokalzeit)">Lokalfenster mit anbieten (z. B. WDR Lokalzeit)</span></label>
         </div>
         <div class="checkboxContainer checkboxContainer-withDescription">
-          <label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" data-k="IncludeForeign"><span>ORF und arte (französisch) mit anbieten</span></label>
+          <label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" data-k="IncludeForeign"><span data-en="Also offer ORF and arte (French)">ORF und arte (französisch) mit anbieten</span></label>
         </div>
-        <p>Die Live-Programme laufen über das Live-TV von Jellyfin. Der Knopf trägt Senderliste und Programmübersicht dort ein; danach erscheinen die Sender unter „Live-TV“.</p>
-        <button is="emby-button" type="button" id="MediathekLiveSetup" class="raised block emby-button"><span>Live-TV einrichten</span></button>
+        <p data-en="Live channels run through Jellyfin’s Live TV. This button adds the channel list and program guide there; the channels then appear under “Live TV”.">Die Live-Programme laufen über das Live-TV von Jellyfin. Der Knopf trägt Senderliste und Programmübersicht dort ein; danach erscheinen die Sender unter „Live-TV“.</p>
+        <button is="emby-button" type="button" id="MediathekLiveSetup" class="raised block emby-button"><span data-en="Set up Live TV">Live-TV einrichten</span></button>
         <div class="fieldDescription" id="MediathekLiveResult"></div>
 
-        <h3>Empfang</h3>
-        <p>Manche Sender lassen sich nur aus ihrem Sendeland abrufen. Was dieser Server sicher nicht empfängt (der Sender lehnt den Abruf zweimal ausdrücklich ab), erscheint im Live-TV gar nicht erst. Die Prüfung fragt jeden Sender von diesem Server aus ab und nennt den Grund.</p>
-        <button is="emby-button" type="button" id="MediathekStatusCheck" class="raised block emby-button"><span>Sender prüfen</span></button>
+        <h3 data-en="Reception">Empfang</h3>
+        <p data-en="Some channels can only be streamed from their home country. Channels this server definitely can’t receive (the broadcaster explicitly refuses twice) don’t appear in Live TV at all. The check queries every channel from this server and shows the reason.">Manche Sender lassen sich nur aus ihrem Sendeland abrufen. Was dieser Server sicher nicht empfängt (der Sender lehnt den Abruf zweimal ausdrücklich ab), erscheint im Live-TV gar nicht erst. Die Prüfung fragt jeden Sender von diesem Server aus ab und nennt den Grund.</p>
+        <button is="emby-button" type="button" id="MediathekStatusCheck" class="raised block emby-button"><span data-en="Check channels">Sender prüfen</span></button>
         <div id="MediathekStatus" style="margin-top:1em"></div>
 
         <br>
-        <button is="emby-button" type="submit" class="raised button-submit block emby-button"><span>Speichern</span></button>
+        <button is="emby-button" type="submit" class="raised button-submit block emby-button"><span data-en="Save">Speichern</span></button>
       </form>
     </div>
   </div>
@@ -55,7 +55,37 @@
       var pluginId = 'b3d0a2f4-71c6-4e7b-9a0e-5c2f8d14e6a9';
       var page = document.querySelector('#MediathekConfigPage');
       function fields() { return page.querySelectorAll('[data-k]'); }
+      // Sprache: Jellyfin setzt <html lang> aus der Anzeigesprache (auto = Browser). de* -> Deutsch, sonst Englisch.
+      // Deutsch steht im Markup; data-en / data-en-<attr> tragen die englische Fassung, beim Anzeigen getauscht.
+      function isDe() { return /^de/i.test(document.documentElement.lang || navigator.language || ''); }
+      function tr(de, en) { return isDe() ? de : en; }
+      function applyLang(root) {
+        var en = !isDe();
+        Array.prototype.forEach.call(root.querySelectorAll('[data-en]'), function (el) {
+          var v = el.getAttribute('data-en');
+          if (v.indexOf('<') >= 0 || !el.children.length) {
+            if (!el.hasAttribute('data-de')) el.setAttribute('data-de', el.innerHTML);
+            el.innerHTML = en ? v : el.getAttribute('data-de');
+          } else {
+            var n = el.lastChild;
+            while (n && !(n.nodeType === 3 && n.nodeValue.trim())) n = n.previousSibling;
+            if (!n) return;
+            if (!el.hasAttribute('data-de')) el.setAttribute('data-de', n.nodeValue);
+            n.nodeValue = en ? v : el.getAttribute('data-de');
+          }
+        });
+        ['placeholder', 'title', 'aria-label', 'label'].forEach(function (a) {
+          Array.prototype.forEach.call(root.querySelectorAll('[data-en-' + a + ']'), function (el) {
+            if (!el.hasAttribute('data-de-' + a)) el.setAttribute('data-de-' + a, el.getAttribute(a) || '');
+            el.setAttribute(a, en ? el.getAttribute('data-en-' + a) : el.getAttribute('data-de-' + a));
+          });
+        });
+      }
       page.addEventListener('pageshow', function () {
+        applyLang(page);
+        // emby-textarea baut sein <label> beim Einhängen aus dem label-Attribut; das hier nachziehen.
+        var ta = page.querySelector('#MediathekSearches'), tl = ta.parentNode.querySelector('label');
+        if (tl) tl.textContent = ta.getAttribute('label');
         Dashboard.showLoadingMsg();
         ApiClient.getPluginConfiguration(pluginId).then(function (cfg) {
           fields().forEach(function (el) {
@@ -82,35 +112,35 @@
       });
       page.querySelector('#MediathekLiveSetup').addEventListener('click', function () {
         var out = page.querySelector('#MediathekLiveResult');
-        out.textContent = 'Wird eingerichtet …';
+        out.textContent = tr('Wird eingerichtet …', 'Setting up …');
         ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('Mediathek/live/setup') }).then(function () {
-          out.textContent = 'Eingerichtet. Jellyfin liest jetzt die Programmübersicht ein; die Sender erscheinen gleich unter „Live-TV“.';
+          out.textContent = tr('Eingerichtet. Jellyfin liest jetzt die Programmübersicht ein; die Sender erscheinen gleich unter „Live-TV“.', 'Done. Jellyfin is now loading the program guide; the channels will appear under “Live TV” shortly.');
         }, function () {
-          out.textContent = 'Das hat nicht geklappt. Im Protokoll von Jellyfin steht der Grund.';
+          out.textContent = tr('Das hat nicht geklappt. Im Protokoll von Jellyfin steht der Grund.', 'That didn’t work. Jellyfin’s log has the details.');
         });
       });
       page.querySelector('#MediathekStatusCheck').addEventListener('click', function () {
         var box = page.querySelector('#MediathekStatus');
-        box.textContent = 'Sender werden geprüft …';
+        box.textContent = tr('Sender werden geprüft …', 'Checking channels …');
         ApiClient.getJSON(ApiClient.getUrl('Mediathek/live/status')).then(function (r) {
           var list = (r && r.channels) || [], good = list.filter(function (c) { return c.Reachable || c.reachable; });
           box.textContent = '';
           var head = document.createElement('p');
-          head.textContent = good.length + ' von ' + list.length + ' Sendern sind von diesem Server aus empfangbar.';
+          head.textContent = tr(good.length + ' von ' + list.length + ' Sendern sind von diesem Server aus empfangbar.', good.length + ' of ' + list.length + ' channels can be received from this server.');
           box.appendChild(head);
           var table = document.createElement('table'); table.style.cssText = 'width:100%;border-collapse:collapse';
           list.slice().sort(function (a, b) { return ((a.Reachable || a.reachable) ? 1 : 0) - ((b.Reachable || b.reachable) ? 1 : 0); }).forEach(function (c) {
             var ok = c.Reachable || c.reachable, tr = document.createElement('tr');
             tr.style.borderTop = '1px solid rgba(128,128,128,.25)';
             [[c.Name || c.name, 'padding:.5em .8em .5em 0;white-space:nowrap;font-weight:600'],
-             [ok ? 'empfangbar' : ((c.InList !== undefined ? c.InList : c.inList) ? 'nicht empfangbar' : 'ausgeblendet'), 'padding:.5em .8em;white-space:nowrap;color:' + (ok ? '#4caf50' : '#ef5350')],
+             [ok ? tr('empfangbar', 'available') : ((c.InList !== undefined ? c.InList : c.inList) ? tr('nicht empfangbar', 'unavailable') : tr('ausgeblendet', 'hidden')), 'padding:.5em .8em;white-space:nowrap;color:' + (ok ? '#4caf50' : '#ef5350')],
              [ok ? '' : (c.Note || c.note || ''), 'padding:.5em 0;opacity:.85']].forEach(function (cell) {
               var td = document.createElement('td'); td.textContent = cell[0]; td.style.cssText = cell[1]; tr.appendChild(td);
             });
             table.appendChild(tr);
           });
           box.appendChild(table);
-        }, function () { box.textContent = 'Die Prüfung hat nicht geklappt.'; });
+        }, function () { box.textContent = tr('Die Prüfung hat nicht geklappt.', 'The check didn’t work.'); });
       });
     })();
   </script>

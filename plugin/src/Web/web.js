@@ -13,7 +13,7 @@
     function api() { return window.ApiClient; }
     function ready() { var a = api(); return !!(a && typeof a.getCurrentUserId === 'function' && a.getCurrentUserId() && a.accessToken()); }
     function themed() { return !!window.__cinemaGlass || document.documentElement.classList.contains('atv-js'); }
-    function en() { return /^en/i.test(document.documentElement.lang || navigator.language || 'de'); }
+    function en() { return !/^de/i.test(document.documentElement.lang || navigator.language || 'de'); }
     function t(de, e) { return en() ? e : de; }
     function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
     function get(path, query) { var a = api(); return a.getJSON(a.getUrl(path, query || {})); }
