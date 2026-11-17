@@ -1,7 +1,7 @@
 # Mediathek für Jellyfin
 
 <p>
-  <a href="https://github.com/derpfiff/jellyfin-mediathek/releases/latest"><img alt="Version" src="https://img.shields.io/badge/Version-0.3.3-7a5cff?style=flat-square"></a>
+  <a href="https://github.com/derpfiff/jellyfin-mediathek/releases/latest"><img alt="Version" src="https://img.shields.io/badge/Version-0.3.4-7a5cff?style=flat-square"></a>
   <img alt="Jellyfin" src="https://img.shields.io/badge/Jellyfin-12.4-22c1ff?style=flat-square">
   <img alt=".NET" src="https://img.shields.io/badge/.NET-10-512bd4?style=flat-square">
   <a href="https://github.com/derpfiff/jellyfin-plugins"><img alt="Katalog" src="https://img.shields.io/badge/Katalog-derpfiff%2Fjellyfin--plugins-ff5c8a?style=flat-square"></a>
@@ -25,7 +25,7 @@ Ein Plugin für [Jellyfin](https://jellyfin.org), das die ARD Mediathek und die 
 
 Das Plugin braucht keine Zugangsdaten und speichert keine Videos. Titel, Bilder und Videoadressen kommen von der ARD Mediathek, die Adressen der Live-Sender aus der Filmliste von [MediathekView](https://mediathekview.de) über [MediathekViewWeb](https://mediathekviewweb.de).
 
-Stand: 0.3.3. Gebaut und geprüft gegen Jellyfin 12.4.
+Stand: 0.3.4. Gebaut und geprüft gegen Jellyfin 12.4.
 
 ## Einrichten
 
